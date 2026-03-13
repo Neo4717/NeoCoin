@@ -1,2 +1,1 @@
-# Neocoin Prototype v0.1
-Initial project structure
+# NeoCoin\n\nPrototype cryptocurrency / blockchain project - v0.1
