@@ -1,0 +1,194 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"log"
+	"net"
+	"strings"
+	"time"
+)
+
+type P2PServer struct {
+	bc *Blockchain
+	pm PeerAPI
+
+	listenAddr string
+	nodeID     string
+
+	maxConns   int
+	maxMsgSize int
+	sem        chan struct{}
+}
+
+func NewP2PServer(bc *Blockchain, pm PeerAPI, listenAddr string, nodeID string) *P2PServer {
+	if strings.TrimSpace(listenAddr) == "" {
+		listenAddr = ":9090"
+	}
+	if strings.TrimSpace(nodeID) == "" {
+		nodeID = bc.MinerAddress
+	}
+	s := &P2PServer{
+		bc:         bc,
+		pm:         pm,
+		listenAddr: listenAddr,
+		nodeID:     nodeID,
+		maxConns:   envInt("P2P_MAX_CONNECTIONS", 200),
+		maxMsgSize: envInt("P2P_MAX_MESSAGE_BYTES", 4<<20),
+	}
+	if s.maxConns <= 0 {
+		s.maxConns = 200
+	}
+	if s.maxMsgSize <= 0 {
+		s.maxMsgSize = 4 << 20
+	}
+	s.sem = make(chan struct{}, s.maxConns)
+	return s
+}
+
+func (s *P2PServer) ListenAddr() string { return s.listenAddr }
+
+func (s *P2PServer) Serve(ctx context.Context) error {
+	lc := net.ListenConfig{}
+	ln, err := lc.Listen(ctx, "tcp", s.listenAddr)
+	if err != nil {
+		return err
+	}
+	defer ln.Close()
+
+	log.Printf("P2P listening on %s (nodeId=%s)", s.listenAddr, s.nodeID)
+
+	for {
+		c, err := ln.Accept()
+		if err != nil {
+			select {
+			case <-ctx.Done():
+				return nil
+			default:
+				return err
+			}
+		}
+
+		select {
+		case s.sem <- struct{}{}:
+			go func() {
+				defer func() { <-s.sem }()
+				_ = s.handleConn(c)
+			}()
+		default:
+			_ = c.Close()
+		}
+	}
+}
+
+func (s *P2PServer) handleConn(c net.Conn) error {
+	defer c.Close()
+
+	_ = c.SetDeadline(time.Now().Add(15 * time.Second))
+
+	// Expect hello first.
+	raw, err := p2pReadJSON(c, 1<<20)
+	if err != nil {
+		return err
+	}
+	var env p2pEnvelope
+	if err := json.Unmarshal(raw, &env); err != nil {
+		return err
+	}
+	if env.Type != "hello" {
+		return errors.New("expected hello")
+	}
+	var hello p2pHello
+	if err := json.Unmarshal(env.Payload, &hello); err != nil {
+		return err
+	}
+	if hello.Protocol != 1 || hello.ChainID != s.bc.ChainID {
+		_ = p2pWriteJSON(c, p2pEnvelope{Type: "error", Payload: mustJSON(map[string]any{"error": "wrong_chain_or_protocol"})})
+		return errors.New("wrong chain/protocol")
+	}
+	if strings.TrimSpace(hello.RulesHash) == "" || hello.RulesHash != s.bc.RulesHashHex() {
+		_ = p2pWriteJSON(c, p2pEnvelope{Type: "error", Payload: mustJSON(map[string]any{"error": "rules_hash_mismatch"})})
+		return errors.New("rules hash mismatch")
+	}
+
+	// Reply hello.
+	_ = p2pWriteJSON(c, p2pEnvelope{Type: "hello", Payload: mustJSON(newP2PHello(s.bc.ChainID, s.bc.RulesHashHex(), s.nodeID))})
+
+	// One request per connection (simple and safe).
+	raw, err = p2pReadJSON(c, s.maxMsgSize)
+	if err != nil {
+		return err
+	}
+	if err := json.Unmarshal(raw, &env); err != nil {
+		return err
+	}
+
+	_ = c.SetDeadline(time.Now().Add(30 * time.Second))
+
+	switch env.Type {
+	case "chain_info_req":
+		return s.writeChainInfo(c)
+	case "headers_from_req":
+		var req p2pHeadersFromReq
+		if err := json.Unmarshal(env.Payload, &req); err != nil {
+			return err
+		}
+		return s.writeHeadersFrom(c, req.From, req.Count)
+	case "block_by_hash_req":
+		var req p2pBlockByHashReq
+		if err := json.Unmarshal(env.Payload, &req); err != nil {
+			return err
+		}
+		return s.writeBlockByHash(c, req.HashHex)
+	default:
+		_ = p2pWriteJSON(c, p2pEnvelope{Type: "error", Payload: mustJSON(map[string]any{"error": "unknown_type"})})
+		return nil
+	}
+}
+
+func (s *P2PServer) writeChainInfo(w io.Writer) error {
+	latest := s.bc.LatestBlock()
+	genesis, _ := s.bc.BlockByHeight(0)
+	peersCount := 0
+	if s.pm != nil {
+		peersCount = len(s.pm.Peers())
+	}
+	out := map[string]any{
+		"chainId":              s.bc.ChainID,
+		"rulesHash":            s.bc.RulesHashHex(),
+		"height":               latest.Height,
+		"latestHash":           fmt.Sprintf("%x", latest.Hash),
+		"genesisHash":          fmt.Sprintf("%x", genesis.Hash),
+		"genesisTimestampUnix": genesis.TimestampUnix,
+		"peersCount":           peersCount,
+	}
+	return p2pWriteJSON(w, p2pEnvelope{Type: "chain_info", Payload: mustJSON(out)})
+}
+
+func (s *P2PServer) writeHeadersFrom(w io.Writer, from uint64, count int) error {
+	if count <= 0 || count > 500 {
+		count = 100
+	}
+	headers := s.bc.HeadersFrom(from, count)
+	return p2pWriteJSON(w, p2pEnvelope{Type: "headers", Payload: mustJSON(headers)})
+}
+
+func (s *P2PServer) writeBlockByHash(w io.Writer, hashHex string) error {
+	hashHex = strings.TrimSpace(hashHex)
+	if hashHex == "" {
+		return p2pWriteJSON(w, p2pEnvelope{Type: "error", Payload: mustJSON(map[string]any{"error": "missing_hash"})})
+	}
+	b, ok := s.bc.BlockByHash(hashHex)
+	if !ok {
+		return p2pWriteJSON(w, p2pEnvelope{Type: "not_found", Payload: mustJSON(map[string]any{"hashHex": hashHex})})
+	}
+	return p2pWriteJSON(w, p2pEnvelope{Type: "block", Payload: mustJSON(b)})
+}
+
+func mustJSON(v any) json.RawMessage {
+	b, _ := json.Marshal(v)
+	return b
+}

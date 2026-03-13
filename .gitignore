@@ -1,0 +1,20 @@
+## Local data / secrets
+.env
+.env.*
+
+## Blockchain runtime data
+blockchain/data/
+blockchain/updates/
+blockchain/*.db
+.smoke-data/
+.rbf-data/
+genesis/smoke.json
+genesis/rbf.json
+
+## n8n runtime data (may contain credentials)
+n8n/data/
+
+## Python
+__pycache__/
+*.pyc
+.venv/

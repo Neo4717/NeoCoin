@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Neocoin Explorer</title>
+    <style>
+      :root {
+        --bg: #0b0f1a;
+        --panel: #121a2a;
+        --text: #e7edf7;
+        --muted: #9fb0c7;
+        --accent: #62d0ff;
+        --danger: #ff6b6b;
+        --ok: #46e6a5;
+        --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji",
+          "Segoe UI Emoji";
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--sans);
+      }
+      a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      header {
+        padding: 20px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        background: linear-gradient(180deg, rgba(98, 208, 255, 0.08), transparent);
+      }
+      h1 {
+        margin: 0 0 8px 0;
+        font-size: 20px;
+        letter-spacing: 0.2px;
+      }
+      .sub {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 18px;
+        display: grid;
+        gap: 14px;
+        grid-template-columns: 1fr;
+      }
+      .row {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: 1.2fr 0.8fr;
+      }
+      @media (max-width: 900px) {
+        .row {
+          grid-template-columns: 1fr;
+        }
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 14px;
+      }
+      .card h2 {
+        margin: 0 0 10px 0;
+        font-size: 14px;
+        color: var(--muted);
+        font-weight: 600;
+      }
+      .kv {
+        display: grid;
+        gap: 6px 10px;
+        grid-template-columns: 180px 1fr;
+        font-size: 13px;
+      }
+      .k {
+        color: var(--muted);
+      }
+      .v {
+        font-family: var(--mono);
+        word-break: break-all;
+      }
+      .toolbar {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      input[type="text"] {
+        width: 380px;
+        max-width: 100%;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 10px;
+        padding: 10px 12px;
+        color: var(--text);
+        font-family: var(--mono);
+        outline: none;
+      }
+      button {
+        background: rgba(98, 208, 255, 0.14);
+        border: 1px solid rgba(98, 208, 255, 0.25);
+        color: var(--text);
+        border-radius: 10px;
+        padding: 10px 12px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      button:hover {
+        background: rgba(98, 208, 255, 0.2);
+      }
+      .hint {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .list {
+        display: grid;
+        gap: 8px;
+      }
+      .item {
+        padding: 10px 10px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.03);
+        display: grid;
+        gap: 4px;
+      }
+      .item .top {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        align-items: baseline;
+      }
+      .badge {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--muted);
+      }
+      pre {
+        margin: 0;
+        font-family: var(--mono);
+        font-size: 12px;
+        white-space: pre-wrap;
+        word-break: break-word;
+        color: #d6e2f3;
+      }
+      .err {
+        color: var(--danger);
+        font-family: var(--mono);
+        font-size: 12px;
+      }
+      .ok {
+        color: var(--ok);
+        font-family: var(--mono);
+        font-size: 12px;
+      }
+      footer {
+        padding: 16px 18px;
+        color: var(--muted);
+        font-size: 12px;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Neocoin Explorer</h1>
+      <div class="sub">
+        Read-only explorer UI served by the node. Use <span style="font-family: var(--mono)">/chain/info</span>,
+        <span style="font-family: var(--mono)">/headers/from</span>, <span style="font-family: var(--mono)">/blocks/hash</span>,
+        and <span style="font-family: var(--mono)">/tx/&lt;txid&gt;</span>. <span id="wsStatus"></span>
+      </div>
+    </header>
+
+    <main>
+      <div class="card">
+        <h2>Search</h2>
+        <div class="toolbar">
+          <input id="q" type="text" placeholder="Block height (e.g. 10) OR block hash hex OR txid hex" />
+          <button id="go">Go</button>
+          <a href="/metrics" target="_blank" rel="noreferrer">Metrics</a>
+        </div>
+        <div class="hint">Tip: transactions are indexed by txid (sha256 of signing view). Coinbase txs are not indexed.</div>
+        <div id="searchStatus" class="hint"></div>
+      </div>
+
+      <div class="row">
+        <div class="card">
+          <h2>Chain</h2>
+          <div class="kv">
+            <div class="k">Height</div>
+            <div class="v" id="height">-</div>
+            <div class="k">Latest Hash</div>
+            <div class="v" id="latestHash">-</div>
+            <div class="k">Difficulty Bits</div>
+            <div class="v" id="difficultyBits">-</div>
+            <div class="k">Next Difficulty Bits</div>
+            <div class="v" id="nextDifficultyBits">-</div>
+            <div class="k">Peers</div>
+            <div class="v" id="peersCount">-</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Mempool</h2>
+          <div class="toolbar">
+            <button id="loadMempool">Load</button>
+            <div class="hint">May require admin token.</div>
+          </div>
+          <div id="mempoolStatus" class="hint"></div>
+          <pre id="mempoolOut"></pre>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="card">
+          <h2>Latest Headers</h2>
+          <div id="headers" class="list"></div>
+        </div>
+        <div class="card">
+          <h2>Details</h2>
+          <div id="detailsStatus" class="hint"></div>
+          <pre id="details"></pre>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      Served from <span style="font-family: var(--mono)">/explorer/</span>. API remains the source of truth.
+    </footer>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

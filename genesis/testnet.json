@@ -1,0 +1,30 @@
+{
+  "network": "neocoin-testnet",
+  "chainId": 2,
+  "timestamp": 1735689600,
+  "genesisMinerAddress": "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
+  "initialSupply": "10000000000000",
+  "genesisMessage": "Neocoin Testnet - Development and Experiments - 2025",
+  "monetaryPolicy": {
+    "initialBlockReward": "5000000000",
+    "halvingInterval": 210000,
+    "minerFeeShare": 100,
+    "tailEmission": "0"
+  },
+  "consensusParams": {
+    "difficultyEnable": true,
+    "difficultyTargetMs": 15000,
+    "difficultyWindow": 20,
+    "difficultyMaxStepBits": 1,
+    "difficultyMinBits": 1,
+    "difficultyMaxBits": 255,
+    "genesisDifficultyBits": 8,
+    "medianTimePastWindow": 11,
+    "maxTimeDrift": 7200,
+    "maxBlockSize": 1000000,
+    "merkleEnable": true,
+    "merkleActivationHeight": 0,
+    "binaryEncodingEnable": true,
+    "binaryEncodingActivationHeight": 0
+  }
+}

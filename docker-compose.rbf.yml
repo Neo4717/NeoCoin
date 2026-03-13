@@ -1,0 +1,7 @@
+services:
+  blockchain:
+    user: "0:0"
+    environment:
+      - AI_AUDITOR_URL=
+      - GENESIS_PATH=${GENESIS_PATH:-genesis/rbf.json}
+      - AUTO_MINE=false

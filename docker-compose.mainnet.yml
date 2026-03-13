@@ -1,0 +1,24 @@
+services:
+  blockchain:
+    # Use a named volume for persistence to avoid host permission issues from bind mounts.
+    user: "0:0"
+    volumes:
+      - type: volume
+        source: neocoin_mainnet_chain_data
+        target: /app/data
+        volume:
+          nocopy: true
+    environment:
+      - ADMIN_TOKEN=${ADMIN_TOKEN:-}
+      - RATE_LIMIT_REQUESTS=${RATE_LIMIT_REQUESTS:-20}
+      - RATE_LIMIT_BURST=${RATE_LIMIT_BURST:-40}
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+volumes:
+  neocoin_mainnet_chain_data:

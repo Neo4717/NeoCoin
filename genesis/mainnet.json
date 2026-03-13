@@ -1,0 +1,31 @@
+{
+  "network": "neocoin-mainnet",
+  "chainId": 1,
+  "timestamp": 1740441600,
+  "genesisMinerAddress": "0123456789abcdef0123456789abcdef0123456789abcdef",
+  "initialSupply": "2100000000000000",
+  "genesisMessage": "Neocoin launches - Educational PoW chain with AI auditor - February 2025",
+  "note": "initialSupply is total supply cap (21,000,000 coins). Premine: NONE. Pure PoW mining starts from block 1.",
+  "monetaryPolicy": {
+    "initialBlockReward": "5000000000",
+    "halvingInterval": 210000,
+    "minerFeeShare": 100,
+    "tailEmission": "0"
+  },
+  "consensusParams": {
+    "difficultyEnable": true,
+    "difficultyTargetMs": 60000,
+    "difficultyWindow": 100,
+    "difficultyMaxStepBits": 1,
+    "difficultyMinBits": 1,
+    "difficultyMaxBits": 255,
+    "genesisDifficultyBits": 18,
+    "medianTimePastWindow": 11,
+    "maxTimeDrift": 7200,
+    "maxBlockSize": 1000000,
+    "merkleEnable": true,
+    "merkleActivationHeight": 0,
+    "binaryEncodingEnable": true,
+    "binaryEncodingActivationHeight": 0
+  }
+}

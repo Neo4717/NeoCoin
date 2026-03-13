@@ -1,0 +1,22 @@
+services:
+  blockchain:
+    ports: []
+    expose:
+      - "8080"
+
+  edge-proxy:
+    image: caddy:2-alpine
+    depends_on:
+      - blockchain
+    ports:
+      - "127.0.0.1:8081:80"
+      - "127.0.0.1:8443:443"
+    volumes:
+      - ./edge/Caddyfile:/etc/caddy/Caddyfile:ro
+      - neocoin_caddy_data:/data
+      - neocoin_caddy_config:/config
+    restart: always
+
+volumes:
+  neocoin_caddy_data:
+  neocoin_caddy_config:

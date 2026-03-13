@@ -1,0 +1,11 @@
+services:
+  blockchain:
+    user: "0:0"
+    environment:
+      - AI_AUDITOR_URL=
+      - CHAIN_ID=3
+      - GENESIS_PATH=${GENESIS_PATH:-genesis/smoke.json}
+      - AUTO_MINE=true
+      - MINE_INTERVAL_MS=200
+      - MINE_FORCE_EMPTY_BLOCKS=true
+      - ADMIN_TOKEN=${ADMIN_TOKEN:-test}

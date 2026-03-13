@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          
+      - name: Build
+        run: |
+          cd blockchain
+          go build ./...
+          
+      - name: Format check
+        run: |
+          cd blockchain
+          gofmt -d .
+          
+      - name: Vet
+        run: |
+          cd blockchain
+          go vet ./...
+          
+      - name: Test
+        run: |
+          cd blockchain
+          go test ./...

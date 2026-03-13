@@ -1,0 +1,770 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+)
+
+type Server struct {
+	bc          *Blockchain
+	aiAuditor   string
+	requireAI   bool
+	httpTimeout time.Duration
+
+	mp    *Mempool
+	miner *Miner
+
+	peers    *PeerManager
+	txGossip bool
+
+	wsEnable bool
+	wsHub    *WSHub
+
+	adminToken string
+	trustProxy bool
+	limiter    *IPRateLimiter
+	metrics    *Metrics
+}
+
+func NewServer(bc *Blockchain, aiAuditorURL string, mp *Mempool, miner *Miner, peers *PeerManager, txGossip bool, metrics *Metrics, adminToken string, limiter *IPRateLimiter, trustProxy bool, wsEnable bool, wsHub *WSHub) *Server {
+	if metrics == nil {
+		metrics = NewMetrics(bc, mp, peers)
+	}
+	return &Server{
+		bc:          bc,
+		aiAuditor:   aiAuditorURL,
+		requireAI:   aiAuditorURL != "",
+		httpTimeout: 5 * time.Second,
+		mp:          mp,
+		miner:       miner,
+		peers:       peers,
+		txGossip:    txGossip,
+		wsEnable:    wsEnable,
+		wsHub:       wsHub,
+		metrics:     metrics,
+		adminToken:  strings.TrimSpace(adminToken),
+		limiter:     limiter,
+		trustProxy:  trustProxy,
+	}
+}
+
+func (s *Server) routes() http.Handler {
+	mux := http.NewServeMux()
+
+	mw := &RouteMiddleware{
+		adminToken: s.adminToken,
+		trustProxy: s.trustProxy,
+		limiter:    s.limiter,
+		metrics:    s.metrics,
+	}
+
+	mux.HandleFunc("/health", mw.Wrap("health", false, 0, s.handleHealth))
+	mux.HandleFunc("/metrics", mw.Wrap("metrics", false, 0, s.metrics.ServeHTTP))
+	if s.wsEnable && s.wsHub != nil {
+		mux.HandleFunc("/ws", mw.Wrap("ws", false, 0, s.wsHub.ServeWS))
+	}
+
+	mux.HandleFunc("/tx", mw.Wrap("tx", false, 1<<20, s.handleSubmitTx))
+	mux.HandleFunc("/tx/", mw.Wrap("tx_get", false, 0, s.handleTxByID))
+	mux.HandleFunc("/tx/proof/", mw.Wrap("tx_proof", false, 0, s.handleTxProof))
+	mux.HandleFunc("/mempool", mw.Wrap("mempool", false, 0, s.handleMempool))
+	mux.HandleFunc("/mine/once", mw.Wrap("mine_once", true, 1<<10, s.handleMineOnce))
+	mux.HandleFunc("/audit/chain", mw.Wrap("audit_chain", true, 1<<16, s.handleAuditChain))
+	mux.HandleFunc("/block", mw.Wrap("block_submit", true, 4<<20, s.handleAddBlock))
+	mux.HandleFunc("/block/height/", mw.Wrap("block_height", false, 0, s.handleBlockByHeight))
+
+	mux.HandleFunc("/balance/", mw.Wrap("balance", false, 0, s.handleBalance))
+	mux.HandleFunc("/address/", mw.Wrap("address_txs", false, 0, s.handleAddressTxs))
+	mux.HandleFunc("/chain/info", mw.Wrap("chain_info", false, 0, s.handleChainInfo))
+	mux.HandleFunc("/headers/from/", mw.Wrap("headers_from", false, 0, s.handleHeadersFrom))
+	mux.HandleFunc("/blocks/from/", mw.Wrap("blocks_from", false, 0, s.handleBlocksFrom))
+	mux.HandleFunc("/blocks/hash/", mw.Wrap("blocks_hash", false, 0, s.handleBlockByHash))
+
+	explorerFS := ExplorerFileServer()
+	mux.HandleFunc("/", mw.Wrap("root", false, 0, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+		http.Redirect(w, r, "/explorer/", http.StatusFound)
+	}))
+	mux.HandleFunc("/explorer", mw.Wrap("explorer_redirect", false, 0, func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/explorer/", http.StatusMovedPermanently)
+	}))
+	mux.HandleFunc("/explorer/", mw.Wrap("explorer", false, 0, func(w http.ResponseWriter, r *http.Request) {
+		http.StripPrefix("/explorer/", explorerFS).ServeHTTP(w, r)
+	}))
+	return mux
+}
+
+func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
+	_ = writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+}
+
+func (s *Server) handleChainInfo(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	latest := s.bc.LatestBlock()
+	genesis, _ := s.bc.BlockByHeight(0)
+	peersCount := 0
+	if s.peers != nil {
+		peersCount = len(s.peers.Peers())
+	}
+	chainWork := s.bc.CanonicalWork().String()
+	policy := s.bc.consensus.MonetaryPolicy
+	nextHeight := latest.Height + 1
+	currentReward := policy.BlockReward(nextHeight)
+	nextHalving := uint64(0)
+	if policy.HalvingInterval > 0 {
+		nextHalving = (latest.Height/policy.HalvingInterval + 1) * policy.HalvingInterval
+	}
+	totalSupply := s.bc.TotalSupply()
+	out := map[string]any{
+		"chainId":                        s.bc.ChainID,
+		"rulesHash":                      s.bc.RulesHashHex(),
+		"height":                         latest.Height,
+		"latestHash":                     fmt.Sprintf("%x", latest.Hash),
+		"genesisHash":                    fmt.Sprintf("%x", genesis.Hash),
+		"genesisTimestampUnix":           genesis.TimestampUnix,
+		"genesisMinerAddress":            genesis.MinerAddress,
+		"minerAddress":                   s.bc.MinerAddress,
+		"peersCount":                     peersCount,
+		"chainWork":                      chainWork,
+		"totalSupply":                    totalSupply,
+		"currentReward":                  currentReward,
+		"nextHalvingHeight":              nextHalving,
+		"difficultyBits":                 latest.DifficultyBits,
+		"nextDifficultyBits":             s.bc.NextDifficultyBits(),
+		"difficultyEnable":               s.bc.consensus.DifficultyEnable,
+		"difficultyTargetMs":             int64(s.bc.consensus.TargetBlockTime / time.Millisecond),
+		"difficultyWindow":               s.bc.consensus.DifficultyWindow,
+		"difficultyMinBits":              s.bc.consensus.MinDifficultyBits,
+		"difficultyMaxBits":              s.bc.consensus.MaxDifficultyBits,
+		"difficultyMaxStepBits":          s.bc.consensus.DifficultyMaxStep,
+		"maxBlockSize":                   s.bc.consensus.MaxBlockSize,
+		"maxTimeDrift":                   s.bc.consensus.MaxTimeDrift,
+		"merkleEnable":                   s.bc.consensus.MerkleEnable,
+		"merkleActivationHeight":         s.bc.consensus.MerkleActivationHeight,
+		"binaryEncodingEnable":           s.bc.consensus.BinaryEncodingEnable,
+		"binaryEncodingActivationHeight": s.bc.consensus.BinaryEncodingActivationHeight,
+		"monetaryPolicy": map[string]any{
+			"initialBlockReward": policy.InitialBlockReward,
+			"halvingInterval":    policy.HalvingInterval,
+			"minerFeeShare":      policy.MinerFeeShare,
+			"tailEmission":       policy.TailEmission,
+		},
+		"consensusParams": map[string]any{
+			"difficultyEnable":               s.bc.consensus.DifficultyEnable,
+			"difficultyTargetMs":             int64(s.bc.consensus.TargetBlockTime / time.Millisecond),
+			"difficultyWindow":               s.bc.consensus.DifficultyWindow,
+			"difficultyMinBits":              s.bc.consensus.MinDifficultyBits,
+			"difficultyMaxBits":              s.bc.consensus.MaxDifficultyBits,
+			"difficultyMaxStepBits":          s.bc.consensus.DifficultyMaxStep,
+			"medianTimePastWindow":           s.bc.consensus.MedianTimePastWindow,
+			"maxTimeDrift":                   s.bc.consensus.MaxTimeDrift,
+			"maxBlockSize":                   s.bc.consensus.MaxBlockSize,
+			"merkleEnable":                   s.bc.consensus.MerkleEnable,
+			"merkleActivationHeight":         s.bc.consensus.MerkleActivationHeight,
+			"binaryEncodingEnable":           s.bc.consensus.BinaryEncodingEnable,
+			"binaryEncodingActivationHeight": s.bc.consensus.BinaryEncodingActivationHeight,
+		},
+	}
+	_ = writeJSON(w, http.StatusOK, out)
+}
+
+func (s *Server) handleHeadersFrom(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	hStr := strings.TrimPrefix(r.URL.Path, "/headers/from/")
+	h, err := strconv.ParseUint(hStr, 10, 64)
+	if err != nil {
+		http.Error(w, "bad height", http.StatusBadRequest)
+		return
+	}
+	count := 100
+	if q := r.URL.Query().Get("count"); q != "" {
+		if n, err := strconv.Atoi(q); err == nil {
+			count = n
+		}
+	}
+	_ = writeJSON(w, http.StatusOK, s.bc.HeadersFrom(h, count))
+}
+
+func (s *Server) handleBlocksFrom(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	hStr := strings.TrimPrefix(r.URL.Path, "/blocks/from/")
+	h, err := strconv.ParseUint(hStr, 10, 64)
+	if err != nil {
+		http.Error(w, "bad height", http.StatusBadRequest)
+		return
+	}
+	count := 20
+	if q := r.URL.Query().Get("count"); q != "" {
+		if n, err := strconv.Atoi(q); err == nil {
+			count = n
+		}
+	}
+	_ = writeJSON(w, http.StatusOK, s.bc.BlocksFrom(h, count))
+}
+
+func (s *Server) handleBlockByHash(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	hashHex := strings.TrimPrefix(r.URL.Path, "/blocks/hash/")
+	if hashHex == "" {
+		http.Error(w, "missing hash", http.StatusBadRequest)
+		return
+	}
+	b, ok := s.bc.BlockByHash(hashHex)
+	if !ok {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	_ = writeJSON(w, http.StatusOK, b)
+}
+
+func (s *Server) handleBlockByHeight(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	hStr := strings.TrimPrefix(r.URL.Path, "/block/height/")
+	h, err := strconv.ParseUint(hStr, 10, 64)
+	if err != nil {
+		http.Error(w, "bad height", http.StatusBadRequest)
+		return
+	}
+	b, ok := s.bc.BlockByHeight(h)
+	if !ok {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	_ = writeJSON(w, http.StatusOK, b)
+}
+
+func (s *Server) handleTxByID(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	txid := strings.TrimPrefix(r.URL.Path, "/tx/")
+	if txid == "" {
+		http.Error(w, "missing txid", http.StatusBadRequest)
+		return
+	}
+	tx, loc, ok := s.bc.TxByID(txid)
+	if !ok {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	_ = writeJSON(w, http.StatusOK, map[string]any{
+		"txId":        txid,
+		"transaction": tx,
+		"location":    loc,
+	})
+}
+
+func (s *Server) handleTxProof(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	txid := strings.TrimPrefix(r.URL.Path, "/tx/proof/")
+	if txid == "" {
+		http.Error(w, "missing txid", http.StatusBadRequest)
+		return
+	}
+
+	s.bc.mu.RLock()
+	var (
+		foundBlock *Block
+		foundIndex int
+		blockHash  string
+	)
+	for _, b := range s.bc.blocks {
+		for i, tx := range b.Transactions {
+			id, err := TxIDHexForConsensus(tx, s.bc.consensus, b.Height)
+			if err != nil {
+				continue
+			}
+			if id == txid {
+				foundBlock = b
+				foundIndex = i
+				blockHash = fmt.Sprintf("%x", b.Hash)
+				break
+			}
+		}
+		if foundBlock != nil {
+			break
+		}
+	}
+	s.bc.mu.RUnlock()
+
+	if foundBlock == nil {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	if foundBlock.Version != 2 {
+		http.Error(w, "merkle proofs are only available for v2 blocks", http.StatusConflict)
+		return
+	}
+
+	leaves := make([][]byte, 0, len(foundBlock.Transactions))
+	for _, tx := range foundBlock.Transactions {
+		h, err := txSigningHashForConsensus(tx, s.bc.consensus, foundBlock.Height)
+		if err != nil {
+			http.Error(w, "tx hash failed", http.StatusInternalServerError)
+			return
+		}
+		leaves = append(leaves, h)
+	}
+
+	branch, siblingLeft, root, err := MerkleProof(leaves, foundIndex)
+	if err != nil {
+		http.Error(w, "proof failed", http.StatusInternalServerError)
+		return
+	}
+	branchHex := make([]string, 0, len(branch))
+	for _, h := range branch {
+		branchHex = append(branchHex, fmt.Sprintf("%x", h))
+	}
+
+	_ = writeJSON(w, http.StatusOK, map[string]any{
+		"txId":        txid,
+		"blockHeight": foundBlock.Height,
+		"blockHash":   blockHash,
+		"txIndex":     foundIndex,
+		"merkleRoot":  fmt.Sprintf("%x", root),
+		"branch":      branchHex,
+		"siblingLeft": siblingLeft,
+	})
+}
+
+func (s *Server) handleAddBlock(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	body, err := io.ReadAll(io.LimitReader(r.Body, 2<<20))
+	if err != nil {
+		http.Error(w, "read body failed", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	var b Block
+	if err := json.Unmarshal(body, &b); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	reorged, err := s.bc.AddBlock(&b)
+	if err != nil && errors.Is(err, ErrUnknownParent) && s.peers != nil {
+		// Try to fetch the missing parent chain, then retry.
+		parentHex := fmt.Sprintf("%x", b.PrevHash)
+		if parentHex != "" {
+			if ferr := s.peers.EnsureAncestors(r.Context(), s.bc, parentHex); ferr == nil {
+				reorged, err = s.bc.AddBlock(&b)
+			}
+		}
+	}
+	if err != nil {
+		_ = writeJSON(w, http.StatusBadRequest, map[string]any{"accepted": false, "message": err.Error()})
+		return
+	}
+	_ = writeJSON(w, http.StatusOK, map[string]any{"accepted": true, "reorged": reorged})
+}
+
+func (s *Server) handleBalance(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	addr := strings.TrimPrefix(r.URL.Path, "/balance/")
+	if addr == "" {
+		http.Error(w, "missing address", http.StatusBadRequest)
+		return
+	}
+	acct, ok := s.bc.Balance(addr)
+	if !ok {
+		acct = Account{}
+	}
+	_ = writeJSON(w, http.StatusOK, map[string]any{"address": addr, "balance": acct.Balance, "nonce": acct.Nonce})
+}
+
+func (s *Server) handleAddressTxs(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	path := strings.TrimPrefix(r.URL.Path, "/address/")
+	parts := strings.Split(path, "/")
+	if len(parts) != 2 || parts[0] == "" || parts[1] != "txs" {
+		http.Error(w, "expected /address/{addr}/txs", http.StatusBadRequest)
+		return
+	}
+	addr := parts[0]
+	if err := validateAddress(addr); err != nil {
+		http.Error(w, "invalid address", http.StatusBadRequest)
+		return
+	}
+	limit := 50
+	if raw := r.URL.Query().Get("limit"); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil {
+			limit = n
+		}
+	}
+	cursor := 0
+	if raw := r.URL.Query().Get("cursor"); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil {
+			cursor = n
+		}
+	}
+
+	txs, nextCursor, more := s.bc.AddressTxs(addr, limit, cursor)
+	_ = writeJSON(w, http.StatusOK, map[string]any{
+		"address":    addr,
+		"txs":        txs,
+		"nextCursor": nextCursor,
+		"more":       more,
+	})
+}
+
+type submitTxResponse struct {
+	Accepted  bool   `json:"accepted"`
+	Message   string `json:"message"`
+	TxID      string `json:"txId,omitempty"`
+	BlockHash string `json:"blockHash,omitempty"`
+	Height    uint64 `json:"height,omitempty"`
+}
+
+func (s *Server) handleSubmitTx(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+	if err != nil {
+		http.Error(w, "read body failed", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	var tx Transaction
+	if err := json.Unmarshal(body, &tx); err != nil {
+		_ = writeJSON(w, http.StatusBadRequest, submitTxResponse{Accepted: false, Message: "invalid json"})
+		return
+	}
+
+	// Base deterministic validation (signature, encoding, etc).
+	if tx.ChainID == 0 {
+		tx.ChainID = s.bc.ChainID
+	}
+	if tx.ChainID != s.bc.ChainID {
+		_ = writeJSON(w, http.StatusBadRequest, submitTxResponse{Accepted: false, Message: "wrong chainId"})
+		return
+	}
+
+	s.bc.mu.RLock()
+	nextHeight := s.bc.blocks[len(s.bc.blocks)-1].Height + 1
+	s.bc.mu.RUnlock()
+
+	if err := tx.VerifyForConsensus(s.bc.consensus, nextHeight); err != nil {
+		_ = writeJSON(w, http.StatusBadRequest, submitTxResponse{Accepted: false, Message: err.Error()})
+		return
+	}
+	if tx.Fee < minFee {
+		_ = writeJSON(w, http.StatusBadRequest, submitTxResponse{Accepted: false, Message: "fee too low"})
+		return
+	}
+	if s.mp == nil {
+		_ = writeJSON(w, http.StatusInternalServerError, submitTxResponse{Accepted: false, Message: "mempool not configured"})
+		return
+	}
+
+	// State-aware checks (balance/nonce) including pending txs for the sender.
+	fromAddr, err := tx.FromAddress()
+	if err != nil {
+		_ = writeJSON(w, http.StatusBadRequest, submitTxResponse{Accepted: false, Message: err.Error()})
+		return
+	}
+	acct, _ := s.bc.Balance(fromAddr)
+	pending := s.mp.PendingForSender(fromAddr)
+	expectedNonce := acct.Nonce + 1 // first missing nonce if mempool is empty
+	var pendingDebitBefore uint64
+	pendingByNonce := map[uint64]Transaction{}
+	for _, p := range pending {
+		pendingByNonce[p.tx.Nonce] = p.tx
+	}
+
+	// Compute contiguous prefix debit and expected next nonce.
+	for {
+		p, ok := pendingByNonce[expectedNonce]
+		if !ok {
+			break
+		}
+		pendingDebitBefore += p.Amount + p.Fee
+		expectedNonce++
+	}
+
+	isReplacement := false
+	if tx.Nonce == expectedNonce {
+		// New tail tx.
+		totalDebit := tx.Amount + tx.Fee
+		if acct.Balance < pendingDebitBefore+totalDebit {
+			_ = writeJSON(w, http.StatusBadRequest, submitTxResponse{Accepted: false, Message: "insufficient funds"})
+			return
+		}
+	} else {
+		// Potential RBF: replace an existing pending tx with the same nonce (within the contiguous region).
+		existing, ok := pendingByNonce[tx.Nonce]
+		if !ok {
+			_ = writeJSON(w, http.StatusBadRequest, submitTxResponse{Accepted: false, Message: fmt.Sprintf("bad nonce: expected %d, got %d", expectedNonce, tx.Nonce)})
+			return
+		}
+
+		// Compute debit for txs before the replaced nonce.
+		debitBefore := uint64(0)
+		for n := acct.Nonce + 1; n < tx.Nonce; n++ {
+			p, ok := pendingByNonce[n]
+			if !ok {
+				_ = writeJSON(w, http.StatusBadRequest, submitTxResponse{Accepted: false, Message: "nonce gap in mempool"})
+				return
+			}
+			debitBefore += p.Amount + p.Fee
+		}
+
+		// New tx must be affordable after prior pending debits; later nonces will be evicted.
+		totalDebit := tx.Amount + tx.Fee
+		if acct.Balance < debitBefore+totalDebit {
+			_ = writeJSON(w, http.StatusBadRequest, submitTxResponse{Accepted: false, Message: "insufficient funds"})
+			return
+		}
+		if tx.Fee <= existing.Fee {
+			_ = writeJSON(w, http.StatusBadRequest, submitTxResponse{Accepted: false, Message: "replacement fee must be higher"})
+			return
+		}
+		isReplacement = true
+	}
+
+	aiApproved := true
+	if s.requireAI {
+		ok, err := s.callAIAuditor(r.Context(), tx)
+		if err != nil {
+			_ = writeJSON(w, http.StatusBadGateway, submitTxResponse{Accepted: false, Message: "ai auditor error"})
+			return
+		}
+		aiApproved = ok
+	}
+
+	if s.requireAI && !aiApproved {
+		_ = writeJSON(w, http.StatusOK, submitTxResponse{Accepted: false, Message: "rejected by AI auditor"})
+		return
+	}
+	var txid string
+	var evicted []string
+	if isReplacement {
+		var replaced bool
+		txid, replaced, evicted, err = s.mp.ReplaceByFeeWithTxID(tx, "", s.bc.consensus, nextHeight)
+		if err != nil {
+			_ = writeJSON(w, http.StatusBadRequest, submitTxResponse{Accepted: false, Message: err.Error()})
+			return
+		}
+		if !replaced {
+			_ = writeJSON(w, http.StatusBadRequest, submitTxResponse{Accepted: false, Message: "replacement rejected"})
+			return
+		}
+	} else {
+		txid, err = s.mp.AddWithTxID(tx, "", s.bc.consensus, nextHeight)
+		if err != nil {
+			// Idempotent gossip: treat duplicates as success.
+			if err.Error() == "duplicate transaction" {
+				_ = writeJSON(w, http.StatusOK, submitTxResponse{Accepted: true, Message: "duplicate", TxID: txid})
+				return
+			}
+			_ = writeJSON(w, http.StatusBadRequest, submitTxResponse{Accepted: false, Message: err.Error()})
+			return
+		}
+	}
+	if s.miner != nil {
+		s.miner.Wake()
+	}
+	if s.wsHub != nil {
+		if len(evicted) > 0 {
+			s.wsHub.Publish(WSEvent{Type: "mempool_removed", Data: map[string]any{"txIds": evicted, "reason": "rbf"}})
+		}
+		from, _ := tx.FromAddress()
+		s.wsHub.Publish(WSEvent{
+			Type: "mempool_added",
+			Data: map[string]any{
+				"txId":      txid,
+				"fromAddr":  from,
+				"toAddress": tx.ToAddress,
+				"amount":    tx.Amount,
+				"fee":       tx.Fee,
+				"nonce":     tx.Nonce,
+			},
+		})
+	}
+	if s.txGossip && s.peers != nil {
+		hops := 0
+		if raw := strings.TrimSpace(r.Header.Get(relayHopsHeader)); raw != "" {
+			if n, err := strconv.Atoi(raw); err == nil {
+				hops = n
+			}
+			hops = hops - 1
+		} else {
+			hops = envInt("TX_GOSSIP_HOPS", 2)
+		}
+		if hops > 0 {
+			s.peers.BroadcastTransaction(context.Background(), tx, hops)
+		}
+	}
+	_ = writeJSON(w, http.StatusOK, submitTxResponse{
+		Accepted: true,
+		Message:  "queued",
+		TxID:     txid,
+	})
+}
+
+func (s *Server) handleAuditChain(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := s.bc.AuditChain(); err != nil {
+		_ = writeJSON(w, http.StatusOK, map[string]any{"status": "FAILED", "message": err.Error()})
+		return
+	}
+	_ = writeJSON(w, http.StatusOK, map[string]any{"status": "SUCCESS", "message": "ok"})
+}
+
+func (s *Server) handleMempool(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if s.mp == nil {
+		_ = writeJSON(w, http.StatusOK, map[string]any{"size": 0, "txs": []any{}})
+		return
+	}
+	entries := s.mp.EntriesSortedByFeeDesc()
+	type view struct {
+		TxID     string `json:"txId"`
+		Fee      uint64 `json:"fee"`
+		Amount   uint64 `json:"amount"`
+		Nonce    uint64 `json:"nonce"`
+		FromAddr string `json:"fromAddr"`
+		To       string `json:"toAddress"`
+	}
+	out := make([]view, 0, len(entries))
+	for _, e := range entries {
+		from, _ := e.tx.FromAddress()
+		out = append(out, view{
+			TxID:     e.txIDHex,
+			Fee:      e.tx.Fee,
+			Amount:   e.tx.Amount,
+			Nonce:    e.tx.Nonce,
+			FromAddr: from,
+			To:       e.tx.ToAddress,
+		})
+	}
+	_ = writeJSON(w, http.StatusOK, map[string]any{"size": len(out), "txs": out})
+}
+
+func (s *Server) handleMineOnce(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if s.miner == nil {
+		_ = writeJSON(w, http.StatusBadRequest, map[string]any{"mined": false, "message": "miner not configured"})
+		return
+	}
+	b, err := s.miner.MineOnce(r.Context(), true)
+	if err != nil {
+		_ = writeJSON(w, http.StatusBadRequest, map[string]any{"mined": false, "message": err.Error()})
+		return
+	}
+	if b == nil {
+		_ = writeJSON(w, http.StatusOK, map[string]any{"mined": false, "message": "no transactions"})
+		return
+	}
+	_ = writeJSON(w, http.StatusOK, map[string]any{
+		"mined":          true,
+		"message":        "ok",
+		"height":         b.Height,
+		"blockHash":      fmt.Sprintf("%x", b.Hash),
+		"difficultyBits": b.DifficultyBits,
+	})
+}
+
+func (s *Server) callAIAuditor(ctx context.Context, tx Transaction) (bool, error) {
+	if s.aiAuditor == "" {
+		return true, nil
+	}
+	if tx.Type != TxTransfer {
+		return false, errors.New("ai auditor only supports transfer tx")
+	}
+	fromAddr, err := tx.FromAddress()
+	if err != nil {
+		return false, err
+	}
+	payload := map[string]any{
+		"transaction": map[string]any{
+			"sender":    fromAddr,
+			"recipient": tx.ToAddress,
+			"amount":    tx.Amount,
+			"data":      tx.Data,
+		},
+	}
+	b, _ := json.Marshal(payload)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.aiAuditor, bytes.NewReader(b))
+	if err != nil {
+		return false, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: s.httpTimeout}
+	resp, err := client.Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return false, fmt.Errorf("ai auditor status: %s", resp.Status)
+	}
+	var out struct {
+		Valid bool `json:"valid"`
+	}
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&out); err != nil {
+		return false, err
+	}
+	return out.Valid, nil
+}
+
+func writeJSON(w http.ResponseWriter, status int, v any) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	return enc.Encode(v)
+}
