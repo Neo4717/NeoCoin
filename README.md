@@ -25,18 +25,33 @@ NeoCoin is an experimental cryptocurrency blockchain built with Go. It implement
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/neocoin.git
-cd neocoin
+git clone https://github.com/Neo4717/NeoCoin.git
+cd NeoCoin
 
-# Generate a wallet (optional)
-docker compose run --rm blockchain ./blockchain create_wallet
+# Copy and edit environment file
+cp .env.example .env
+# Edit .env and set ADMIN_TOKEN (required!)
 
-# Start mining (replace with your address)
-docker compose run -e MINER_ADDRESS=YOUR_ADDRESS -e AUTO_MINE=true blockchain
+# Start the node
+docker compose up -d blockchain
+
+# Check status
+curl http://127.0.0.1:8080/chain/info
 ```
 
-Or without mining:
+### Generate Wallet
+
 ```bash
+docker compose run --rm blockchain ./blockchain create_wallet
+```
+
+### Start Mining
+
+```bash
+# Edit .env and set:
+# MINER_ADDRESS=your_wallet_address
+# AUTO_MINE=true
+
 docker compose up -d blockchain
 ```
 
@@ -62,12 +77,15 @@ curl http://127.0.0.1:8080/chain/info
 
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `ADMIN_TOKEN` | (required) | Admin token for protected endpoints |
 | `CHAIN_ID` | 1 | Chain ID (1=mainnet, 2=testnet) |
 | `GENESIS_PATH` | genesis/mainnet.json | Genesis file |
 | `MINER_ADDRESS` | - | Mining reward address |
 | `AUTO_MINE` | false | Enable automatic mining |
 | `MINE_FORCE_EMPTY_BLOCKS` | false | Mine even with no txs |
 | `AI_AUDITOR_URL` | - | AI auditor endpoint |
+| `RATE_LIMIT_REQUESTS` | 100 | Rate limit (req/s) |
+| `RATE_LIMIT_BURST` | 20 | Rate limit burst |
 
 ### Networks
 
