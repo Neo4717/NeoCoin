@@ -1,6 +1,9 @@
 ## Local data / secrets
 .env
-.env.*
+.env.local
+.env.production
+
+## Blockchain runtime data
 
 ## Blockchain runtime data
 blockchain/data/
