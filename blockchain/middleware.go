@@ -18,6 +18,7 @@ type ctxKey string
 
 const requestIDKey ctxKey = "request_id"
 
+// requestIDFromContext reserved for future use //nolint:unused
 func requestIDFromContext(ctx context.Context) string {
 	v, _ := ctx.Value(requestIDKey).(string)
 	return v
@@ -63,7 +64,7 @@ func (mw *RouteMiddleware) Wrap(route string, admin bool, maxBodyBytes int64, h 
 				if retryAfter > 0 {
 					w.Header().Set("Retry-After", strconv.Itoa(int(retryAfter.Seconds())+1))
 				}
-				writeJSON(w, http.StatusTooManyRequests, map[string]any{
+				_ = writeJSON(w, http.StatusTooManyRequests, map[string]any{
 					"error":     "rate_limited",
 					"message":   "too many requests",
 					"requestId": reqID,
@@ -75,7 +76,7 @@ func (mw *RouteMiddleware) Wrap(route string, admin bool, maxBodyBytes int64, h 
 
 		if admin {
 			if mw.adminToken == "" {
-				writeJSON(w, http.StatusForbidden, map[string]any{
+				_ = writeJSON(w, http.StatusForbidden, map[string]any{
 					"error":     "admin_disabled",
 					"message":   "admin endpoints are disabled (set ADMIN_TOKEN to enable)",
 					"requestId": reqID,
@@ -84,7 +85,7 @@ func (mw *RouteMiddleware) Wrap(route string, admin bool, maxBodyBytes int64, h 
 				return
 			}
 			if !hasBearerToken(r, mw.adminToken) {
-				writeJSON(w, http.StatusUnauthorized, map[string]any{
+				_ = writeJSON(w, http.StatusUnauthorized, map[string]any{
 					"error":     "unauthorized",
 					"message":   "missing or invalid admin token",
 					"requestId": reqID,

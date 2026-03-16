@@ -137,6 +137,7 @@ func ConsensusRulesHashHex(p ConsensusParams) (string, error) {
 	return hex.EncodeToString(h), nil
 }
 
+// parseRulesHashHex reserved for future use //nolint:unused
 func parseRulesHashHex(s string) ([]byte, error) {
 	b, err := hex.DecodeString(s)
 	if err != nil {

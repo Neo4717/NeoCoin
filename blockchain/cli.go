@@ -499,6 +499,7 @@ func fetchChainInfo(server string) (*chainInfoView, error) {
 	return &v, nil
 }
 
+// determineChainID reserved for future use //nolint:unused
 func determineChainID(server string) (uint64, error) {
 	info, err := fetchChainInfo(server)
 	if err != nil {

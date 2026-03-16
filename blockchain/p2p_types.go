@@ -27,6 +27,7 @@ type p2pBlockReq struct {
 	HashHex string `json:"hashHex"`
 }
 
+// p2pAuthChallenge reserved for future use //nolint:unused
 type p2pAuthChallenge struct {
 	Challenge string `json:"challenge"`
 	NodeID    string `json:"nodeId"`

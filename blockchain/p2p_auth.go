@@ -109,6 +109,7 @@ func NewP2PServerAuth(auth *P2PAuth, scorer *PeerScorer, authMode bool) *P2PServ
 	}
 }
 
+// handleAuth reserved for future use //nolint:unused
 func (sa *P2PServerAuth) handleAuth(c net.Conn, env p2pEnvelope, start time.Time) error {
 	var challengeReq p2pAuthChallenge
 	if err := json.Unmarshal(env.Payload, &challengeReq); err != nil {
@@ -189,6 +190,7 @@ func (ca *P2PClientAuth) AddTrustedPeer(pubKeyHex string) {
 	ca.trustedPeers[pubKeyHex] = struct{}{}
 }
 
+// sha256Hash reserved for future use //nolint:unused
 func sha256Hash(data string) string {
 	h := sha256.Sum256([]byte(data))
 	return hex.EncodeToString(h[:])

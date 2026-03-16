@@ -408,6 +408,9 @@ func (bc *Blockchain) AuditChain() error {
 	return bc.recomputeState()
 }
 
+// createGenesis reserved for future use
+//
+//nolint:unused
 func (bc *Blockchain) createGenesis(genesisSupply uint64, genesisToAddress, genesisMinerAddress string, genesisTimestampUnix int64) (*Block, error) {
 	coinbase := Transaction{
 		Type:      TxCoinbase,

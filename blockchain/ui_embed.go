@@ -28,9 +28,8 @@ func WalletFileServer() http.Handler {
 	}
 	fs := http.FS(sub)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		path := r.URL.Path
-		if path == "" || path == "/" {
-			path = "/wallet.html"
+		if r.URL.Path == "" || r.URL.Path == "/" {
+			r.URL.Path = "/wallet.html"
 		}
 		http.FileServer(fs).ServeHTTP(w, r)
 	})
