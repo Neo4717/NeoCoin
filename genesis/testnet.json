@@ -4,7 +4,7 @@
   "timestamp": 1735689600,
   "genesisMinerAddress": "NEO0000215cb488337e53199586744599db99d497e4f8d4ec8c49779e7c01f2c8a6ef0cbed3cd3d",
   "initialSupply": "10000000000000",
-  "genesisMessage": "Neocoin Testnet - Development and Experiments - 2025",
+  "genesisMessage": "Follow the white rabbit - NeoCoin Testnet",
   "monetaryPolicy": {
     "initialBlockReward": "5000000000",
     "halvingInterval": 210000,
