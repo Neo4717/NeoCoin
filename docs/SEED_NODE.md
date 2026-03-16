@@ -118,11 +118,20 @@ volumes:
 3. **Monitor**: Set up monitoring for node health
 4. **Updates**: Keep your node updated with the latest code
 
-## Maintaining a Seed Node
+## P2P Authentication (Production)
 
-- Monitor logs: `docker compose -f docker-compose.seed.yml logs -f`
-- Check peer count: `curl http://localhost:8080/chain/info`
-- Update: `git pull && docker compose -f docker-compose.seed.yml up -d --build`
+For production deployments, enable P2P authentication to ensure nodes connect to trusted peers:
+
+```bash
+# Generate a node key (Ed25519)
+NODE_PRIVATE_KEY=$(openssl genpkey -algorithm ED25519 2>/dev/null | base64)
+```
+
+Add to your environment:
+```bash
+P2P_AUTH_ENABLE=true
+P2P_TRUSTED_PEERS=peer1_pubkey,peer2_pubkey
+```
 
 ## Getting Help
 

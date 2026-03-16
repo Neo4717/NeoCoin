@@ -20,9 +20,10 @@ type P2PServer struct {
 	listenAddr string
 	nodeID     string
 
-	maxConns   int
-	maxMsgSize int
-	sem        chan struct{}
+	maxConns    int
+	maxMsgSize  int
+	sem         chan struct{}
+	blockRecvCB func(*Block)
 }
 
 func NewP2PServer(bc *Blockchain, pm PeerAPI, mp *Mempool, listenAddr string, nodeID string) *P2PServer {
@@ -149,6 +150,10 @@ func (s *P2PServer) handleConn(c net.Conn) error {
 		return s.handleTransactionReq(c, env.Payload)
 	case "tx_broadcast":
 		return s.handleTransactionBroadcast(c, env.Payload)
+	case "block_broadcast":
+		return s.handleBlockBroadcast(c, env.Payload)
+	case "block_req":
+		return s.handleBlockReq(c, env.Payload)
 	default:
 		_ = p2pWriteJSON(c, p2pEnvelope{Type: "error", Payload: mustJSON(map[string]any{"error": "unknown_type"})})
 		return nil
@@ -241,6 +246,54 @@ func (s *P2PServer) handleTransactionBroadcast(c net.Conn, payload json.RawMessa
 	}
 
 	return p2pWriteJSON(c, p2pEnvelope{Type: "tx_broadcast_ack", Payload: mustJSON(map[string]any{"txid": txid})})
+}
+
+func (s *P2PServer) handleBlockBroadcast(c net.Conn, payload json.RawMessage) error {
+	var broadcast p2pBlockBroadcast
+	if err := json.Unmarshal(payload, &broadcast); err != nil {
+		return err
+	}
+
+	var block Block
+	if err := json.Unmarshal([]byte(broadcast.BlockHex), &block); err != nil {
+		_ = p2pWriteJSON(c, p2pEnvelope{Type: "error", Payload: mustJSON(map[string]any{"error": "invalid_block_json"})})
+		return err
+	}
+
+	if s.bc != nil {
+		_, err := s.bc.AddBlock(&block)
+		if err != nil {
+			log.Printf("p2p block broadcast add result: %v", err)
+		}
+	}
+
+	if s.blockRecvCB != nil {
+		s.blockRecvCB(&block)
+	}
+
+	return p2pWriteJSON(c, p2pEnvelope{Type: "block_broadcast_ack", Payload: mustJSON(map[string]any{"hash": fmt.Sprintf("%x", block.Hash)})})
+}
+
+func (s *P2PServer) handleBlockReq(c net.Conn, payload json.RawMessage) error {
+	var req p2pBlockReq
+	if err := json.Unmarshal(payload, &req); err != nil {
+		_ = p2pWriteJSON(c, p2pEnvelope{Type: "error", Payload: mustJSON(map[string]any{"error": "invalid_payload"})})
+		return err
+	}
+
+	b, ok := s.bc.BlockByHash(req.HashHex)
+	if !ok {
+		_ = p2pWriteJSON(c, p2pEnvelope{Type: "not_found", Payload: mustJSON(map[string]any{"hashHex": req.HashHex})})
+		return nil
+	}
+
+	blockJSON, err := json.Marshal(b)
+	if err != nil {
+		_ = p2pWriteJSON(c, p2pEnvelope{Type: "error", Payload: mustJSON(map[string]any{"error": "marshal_failed"})})
+		return err
+	}
+
+	return p2pWriteJSON(c, p2pEnvelope{Type: "block", Payload: blockJSON})
 }
 
 func mustJSON(v any) json.RawMessage {

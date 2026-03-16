@@ -105,6 +105,10 @@ type p2pTxResponse struct {
 	TxID string `json:"txid"`
 }
 
+type p2pBlockResponse struct {
+	Hash string `json:"hash"`
+}
+
 func (c *P2PClient) RequestTransaction(ctx context.Context, peer string, tx Transaction) (string, error) {
 	txJSON, err := json.Marshal(tx)
 	if err != nil {
@@ -129,4 +133,26 @@ func (c *P2PClient) BroadcastTransaction(ctx context.Context, peer string, tx Tr
 		return "", err
 	}
 	return resp.TxID, nil
+}
+
+func (c *P2PClient) BroadcastBlock(ctx context.Context, peer string, block *Block) (string, error) {
+	blockJSON, err := json.Marshal(block)
+	if err != nil {
+		return "", err
+	}
+	var resp p2pBlockResponse
+	err = c.do(ctx, peer, "block_broadcast", p2pBlockBroadcast{BlockHex: string(blockJSON)}, &resp, "block_broadcast_ack")
+	if err != nil {
+		return "", err
+	}
+	return resp.Hash, nil
+}
+
+func (c *P2PClient) RequestBlock(ctx context.Context, peer string, hashHex string) (*Block, error) {
+	var block Block
+	err := c.do(ctx, peer, "block_req", p2pBlockReq{HashHex: hashHex}, &block, "block")
+	if err != nil {
+		return nil, err
+	}
+	return &block, nil
 }

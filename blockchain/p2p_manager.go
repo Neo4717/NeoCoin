@@ -88,6 +88,17 @@ func (pm *P2PPeerManager) BroadcastTransaction(ctx context.Context, tx Transacti
 	}
 }
 
+func (pm *P2PPeerManager) BroadcastBlock(ctx context.Context, block *Block) {
+	for _, peer := range pm.peers {
+		go func(p string) {
+			_, err := pm.client.BroadcastBlock(ctx, p, block)
+			if err != nil {
+				log.Printf("p2p broadcast block to %s failed: %v", p, err)
+			}
+		}(peer)
+	}
+}
+
 func (pm *P2PPeerManager) EnsureAncestors(ctx context.Context, bc *Blockchain, missingHashHex string) error {
 	need := missingHashHex
 	visited := map[string]struct{}{}

@@ -18,3 +18,22 @@ type p2pTransactionReq struct {
 type p2pTransactionBroadcast struct {
 	TxHex string `json:"txHex"`
 }
+
+type p2pBlockBroadcast struct {
+	BlockHex string `json:"blockHex"`
+}
+
+type p2pBlockReq struct {
+	HashHex string `json:"hashHex"`
+}
+
+type p2pAuthChallenge struct {
+	Challenge string `json:"challenge"`
+	NodeID    string `json:"nodeId"`
+}
+
+type p2pAuthResponse struct {
+	Response string `json:"response"`
+	NodeID   string `json:"nodeId"`
+	PubKey   string `json:"pubKey"`
+}
