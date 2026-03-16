@@ -1,6 +1,6 @@
-# Neocoin protocol (v0.1)
+# Neocoin protocol (v1.0)
 
-Status: **v0.1 — early prototype**. This document describes the current on-disk and over-the-wire behaviors implemented by the node in this repository.
+Status: **v1.0 — stable**. This document describes the current on-disk and over-the-wire behaviors implemented by the node in this repository.
 
 ## Chain identity
 

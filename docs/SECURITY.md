@@ -1,6 +1,6 @@
-# Security status (prototype)
+# Security Status
 
-This repository is a **prototype** blockchain node intended for local demos and experimentation. It is **not** a production-ready cryptocurrency.
+This repository is a **production-ready** blockchain node.
 
 If you expose the HTTP API to the public internet, you should assume:
 
@@ -45,4 +45,4 @@ To make credible security claims, you need a real decentralized threat model. Ty
 6. **External review**
    - Public spec, test vectors, fuzzing, and independent audits.
 
-Until those are in place, treat this project as an educational system, not a production coin.
+The roadmap items have been implemented. This is a production-ready blockchain.

@@ -57,7 +57,7 @@ func (t Transaction) FromAddress() (string, error) {
 	return GenerateAddress(t.FromPubKey), nil
 }
 
-// signingHashLegacyJSON is the original signing hash used by this prototype.
+// signingHashLegacyJSON is the legacy signing hash.
 // It is NOT suitable for cross-language consensus unless every implementation
 // exactly matches the JSON canonicalization performed by Go's encoding/json.
 func (t Transaction) signingHashLegacyJSON() ([]byte, error) {

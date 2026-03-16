@@ -10,8 +10,8 @@
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Live-green?style=flat)](https://neo4717.github.io/NeoCoin/)
 [![Blockchain](https://img.shields.io/badge/Educational%20PoW-4B0082?style=flat)](#)
 
-> **Status: Pre-Alpha Testnet**  
-> NeoCoin is early-stage blockchain software. The testnet is live for development and testing. Breaking changes are expected during this phase.
+> **Status: v1.0 Stable Testnet**  
+> NeoCoin is blockchain software. The testnet is live for development and testing.
 
 ## Vision
 

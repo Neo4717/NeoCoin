@@ -141,6 +141,8 @@ func (s *Server) handleChainInfo(w http.ResponseWriter, r *http.Request) {
 	}
 	totalSupply := s.bc.TotalSupply()
 	out := map[string]any{
+		"version":                        version,
+		"buildTime":                      buildTime,
 		"chainId":                        s.bc.ChainID,
 		"rulesHash":                      s.bc.RulesHashHex(),
 		"height":                         latest.Height,

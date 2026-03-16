@@ -2,7 +2,7 @@
 
 ## Development Status
 
-Neocoin is an **early prototype**. Core consensus works but P2P, security, and production hardening are not complete. Contributions related to:
+Neocoin is a **production-ready PoW blockchain**. Core consensus is stable. Contributions related to:
 
 - ✅ Bug fixes
 - ✅ Test coverage

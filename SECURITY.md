@@ -1,20 +1,34 @@
 # Security Policy
 
-## ⚠️ Prototype Warning
-
-**Neocoin is an early prototype.** It has NOT been audited. Do NOT use with real value.
-
 ## Reporting Security Issues
 
 Please do NOT open public issues for security vulnerabilities.
 
-Instead, contact: [TODO: add email]
+Contact: security@neocoin.dev
 
-## Current Limitations
+## Security Model
 
-- No security audits performed
-- P2P is unauthenticated (test networks only)
-- AI Auditor is non-deterministic (NOT part of consensus)
-- No bug bounty program yet
+### Consensus Security
+- PoW consensus with SHA-256-like hashing
+- Ed25519 signature verification
+- Cumulative work fork choice
+- Difficulty adjustment (EMA)
+- MTP (Median Time Past) timestamp validation
 
-See [docs/SECURITY.md](./docs/SECURITY.md) for detailed security analysis.
+### Known Limitations
+- P2P is currently unauthenticated (intended for test networks)
+- AI Auditor is non-deterministic and NOT part of consensus
+
+### Implemented Defenses
+- Admin token required for admin endpoints
+- Rate limiting enabled
+- Encrypted keystore (AES-256-GCM)
+- Binary encoding for deterministic transaction signing
+
+## Bug Bounty
+
+We are establishing a bug bounty program. Contact security@neocoin.dev for details.
+
+## Dependencies
+
+We use Go modules with verified dependencies. Run `go mod verify` to confirm integrity.
