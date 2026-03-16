@@ -398,6 +398,81 @@
       50% { transform: translateY(-10px); }
     }
     .floating { animation: float 3s ease-in-out infinite; }
+    
+    /* Mempool */
+    .mempool { padding: 100px 0; background: rgba(0,0,0,0.2); }
+    .mempool-stats {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      margin-bottom: 40px;
+    }
+    .mempool-stat {
+      text-align: center;
+      background: var(--card);
+      padding: 24px 40px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .mempool-stat-value {
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .mempool-stat-label {
+      font-size: 13px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .mempool-table-container {
+      background: var(--card);
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.05);
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+    .mempool-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .mempool-table th {
+      background: rgba(0,0,0,0.3);
+      padding: 16px;
+      text-align: left;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-size: 11px;
+    }
+    .mempool-table td {
+      padding: 14px 16px;
+      border-top: 1px solid rgba(255,255,255,0.03);
+      font-family: 'Monaco', 'Consolas', monospace;
+    }
+    .mempool-table tr:hover {
+      background: rgba(255,255,255,0.02);
+    }
+    .mempool-table .tx-hash {
+      color: var(--accent);
+      font-size: 11px;
+    }
+    .mempool-table .address {
+      color: var(--purple);
+      font-size: 11px;
+    }
+    .mempool-actions {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+    }
+    @media (max-width: 768px) {
+      .mempool-stats { flex-direction: column; gap: 16px; }
+      .mempool-table { font-size: 11px; }
+      .mempool-table th, .mempool-table td { padding: 10px 8px; }
+    }
   </style>
 </head>
 <body>
@@ -410,6 +485,7 @@
           <li><a href="#tech">Technology</a></li>
           <li><a href="#roadmap">Roadmap</a></li>
           <li><a href="#community">Community</a></li>
+          <li><a href="#mempool">Mempool</a></li>
         </ul>
         <div class="nav-cta">
           <a href="https://github.com/Neo4717/NeoCoin" class="btn btn-secondary">GitHub</a>
@@ -615,6 +691,50 @@
     </div>
   </section>
 
+  <section id="mempool" class="mempool">
+    <div class="container">
+      <div class="section-header">
+        <h2>Live Mempool</h2>
+        <p>Real-time pending transactions</p>
+      </div>
+      <div class="mempool-stats">
+        <div class="mempool-stat">
+          <div class="mempool-stat-value" id="mempoolSize">-</div>
+          <div class="mempool-stat-label">Pending Txs</div>
+        </div>
+        <div class="mempool-stat">
+          <div class="mempool-stat-value" id="mempoolGas">-</div>
+          <div class="mempool-stat-label">Avg Fee (NEO)</div>
+        </div>
+        <div class="mempool-stat">
+          <div class="mempool-stat-value" id="mempoolMin">-</div>
+          <div class="mempool-stat-label">Min Fee</div>
+        </div>
+      </div>
+      <div class="mempool-table-container">
+        <table class="mempool-table" id="mempoolTable">
+          <thead>
+            <tr>
+              <th>Tx Hash</th>
+              <th>From</th>
+              <th>To</th>
+              <th>Value</th>
+              <th>Fee</th>
+              <th>Nonce</th>
+            </tr>
+          </thead>
+          <tbody id="mempoolBody">
+            <tr><td colspan="6" style="text-align:center">Loading mempool data...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="mempool-actions">
+        <button class="btn btn-primary" onclick="refreshMempool()">Refresh</button>
+        <button class="btn btn-secondary" onclick="toggleAutoRefresh()" id="autoRefreshBtn">Auto Refresh: OFF</button>
+      </div>
+    </div>
+  </section>
+
   <footer>
     <div class="container">
       <div class="footer-content">
@@ -631,5 +751,66 @@
       </div>
     </div>
   </footer>
-</body>
+    <script>
+    const API_BASE = ''; // Set to 'https://your-node.example.com' for GitHub Pages, empty for same-origin
+    
+    let autoRefresh = false;
+    let autoRefreshInterval = null;
+    
+    async function refreshMempool() {
+      const apiUrl = API_BASE + '/mempool';
+      try {
+        const res = await fetch(apiUrl);
+        if (!res.ok) throw new Error('API error');
+        const data = await res.json();
+        
+        document.getElementById('mempoolSize').textContent = data.size || 0;
+        
+        if (data.txs && data.txs.length > 0) {
+          const fees = data.txs.map(e => e.fee || 0);
+          const avgFee = fees.reduce((a, b) => a + b, 0) / fees.length;
+          const minFee = Math.min(...fees);
+          document.getElementById('mempoolGas').textContent = (avgFee / 1e8).toFixed(6);
+          document.getElementById('mempoolMin').textContent = (minFee / 1e8).toFixed(6);
+          
+          const tbody = document.getElementById('mempoolBody');
+          tbody.innerHTML = data.txs.slice(0, 20).map(tx => {
+            return '<tr>' +
+              '<td class="tx-hash">' + (tx.txId || '').substring(0, 16) + '...</td>' +
+              '<td class="address">' + (tx.fromAddr || '').substring(0, 12) + '...</td>' +
+              '<td class="address">' + (tx.toAddress || '').substring(0, 12) + '...</td>' +
+              '<td>' + (tx.amount / 1e8).toFixed(2) + '</td>' +
+              '<td>' + (tx.fee / 1e8).toFixed(6) + '</td>' +
+              '<td>' + (tx.nonce || '-') + '</td>' +
+            '</tr>';
+          }).join('');
+        } else {
+          document.getElementById('mempoolGas').textContent = '0';
+          document.getElementById('mempoolMin').textContent = '0';
+          document.getElementById('mempoolBody').innerHTML = '<tr><td colspan="6" style="text-align:center">No pending transactions</td></tr>';
+        }
+      } catch (e) {
+        console.error('Mempool fetch error:', e);
+        document.getElementById('mempoolBody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--warning)">Unable to load mempool (node may be offline)</td></tr>';
+      }
+    }
+    
+    function toggleAutoRefresh() {
+      autoRefresh = !autoRefresh;
+      const btn = document.getElementById('autoRefreshBtn');
+      if (autoRefresh) {
+        btn.textContent = 'Auto Refresh: ON';
+        btn.classList.add('btn-primary');
+        btn.classList.remove('btn-secondary');
+        autoRefreshInterval = setInterval(refreshMempool, 5000);
+      } else {
+        btn.textContent = 'Auto Refresh: OFF';
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-secondary');
+        clearInterval(autoRefreshInterval);
+      }
+    }
+    
+    refreshMempool();
+  </script>
 </html>
