@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  blockchain:
+    build:
+      context: ./blockchain
+      dockerfile: Dockerfile
+    user: "0:0"
+    ports:
+      - "0.0.0.0:8080:8080"
+    volumes:
+      - neocoin_mainnet_data:/app/data
+      - ./genesis:/app/genesis:ro
+    environment:
+      - CHAIN_ID=1
+      - GENESIS_PATH=genesis/mainnet.json
+      - MINER_ADDRESS=${MINER_ADDRESS:-}
+      - ADMIN_TOKEN=${ADMIN_TOKEN:-}
+      - AUTO_MINE=${AUTO_MINE:-false}
+      - RATE_LIMIT_REQUESTS=100
+      - RATE_LIMIT_BURST=20
+      - HTTP_ADDR=0.0.0.0:8080
+      - WS_ENABLE=true
+      - WS_MAX_CONNECTIONS=100
+      - P2P_ENABLE=${P2P_ENABLE:-false}
+      - P2P_LISTEN_ADDR=0.0.0.0:9090
+      - P2P_PEERS=${P2P_PEERS:-}
+      - NODE_ID=${NODE_ID:-}
+    restart: unless-stopped
+    command: ["./blockchain", "server"]
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+    labels:
+      - "neocoin.type=fullnode"
+      - "neocoin.network=mainnet"
+
+volumes:
+  neocoin_mainnet_data:
+    driver: local

@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -75,6 +76,8 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("/tx", mw.Wrap("tx", false, 1<<20, s.handleSubmitTx))
 	mux.HandleFunc("/tx/", mw.Wrap("tx_get", false, 0, s.handleTxByID))
 	mux.HandleFunc("/tx/proof/", mw.Wrap("tx_proof", false, 0, s.handleTxProof))
+	mux.HandleFunc("/wallet/create", mw.Wrap("wallet_create", false, 0, s.handleWalletCreate))
+	mux.HandleFunc("/wallet/sign", mw.Wrap("wallet_sign", false, 0, s.handleWalletSign))
 	mux.HandleFunc("/mempool", mw.Wrap("mempool", false, 0, s.handleMempool))
 	mux.HandleFunc("/mine/once", mw.Wrap("mine_once", true, 1<<10, s.handleMineOnce))
 	mux.HandleFunc("/audit/chain", mw.Wrap("audit_chain", true, 1<<16, s.handleAuditChain))
@@ -87,6 +90,14 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("/headers/from/", mw.Wrap("headers_from", false, 0, s.handleHeadersFrom))
 	mux.HandleFunc("/blocks/from/", mw.Wrap("blocks_from", false, 0, s.handleBlocksFrom))
 	mux.HandleFunc("/blocks/hash/", mw.Wrap("blocks_hash", false, 0, s.handleBlockByHash))
+
+	walletFS := WalletFileServer()
+	mux.HandleFunc("/wallet", mw.Wrap("wallet_redirect", false, 0, func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/wallet/", http.StatusFound)
+	}))
+	mux.HandleFunc("/wallet/", mw.Wrap("wallet", false, 0, func(w http.ResponseWriter, r *http.Request) {
+		http.StripPrefix("/wallet/", walletFS).ServeHTTP(w, r)
+	}))
 
 	explorerFS := ExplorerFileServer()
 	mux.HandleFunc("/", mw.Wrap("root", false, 0, func(w http.ResponseWriter, r *http.Request) {
@@ -767,4 +778,113 @@ func writeJSON(w http.ResponseWriter, status int, v any) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	return enc.Encode(v)
+}
+
+func (s *Server) handleWalletCreate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	wlt, err := NewWallet()
+	if err != nil {
+		_ = writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		return
+	}
+	_ = writeJSON(w, http.StatusOK, map[string]any{
+		"address":    wlt.Address,
+		"publicKey":  wlt.PublicKeyBase64(),
+		"privateKey": wlt.PrivateKeyBase64(),
+	})
+}
+
+type signRequest struct {
+	PrivateKey string `json:"privateKey"`
+	ToAddress  string `json:"toAddress"`
+	Amount     uint64 `json:"amount"`
+	Fee        uint64 `json:"fee"`
+	Nonce      uint64 `json:"nonce"`
+	Data       string `json:"data"`
+}
+
+func (s *Server) handleWalletSign(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+	if err != nil {
+		_ = writeJSON(w, http.StatusBadRequest, map[string]any{"error": "read body failed"})
+		return
+	}
+	defer r.Body.Close()
+
+	var req signRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		_ = writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid json"})
+		return
+	}
+
+	if req.PrivateKey == "" {
+		_ = writeJSON(w, http.StatusBadRequest, map[string]any{"error": "privateKey required"})
+		return
+	}
+	if req.ToAddress == "" {
+		_ = writeJSON(w, http.StatusBadRequest, map[string]any{"error": "toAddress required"})
+		return
+	}
+	if req.Amount == 0 {
+		_ = writeJSON(w, http.StatusBadRequest, map[string]any{"error": "amount required"})
+		return
+	}
+	if req.Fee == 0 {
+		req.Fee = uint64(minFee)
+	}
+
+	wlt, err := WalletFromPrivateKeyBase64(req.PrivateKey)
+	if err != nil {
+		_ = writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid private key: " + err.Error()})
+		return
+	}
+
+	if req.Nonce == 0 {
+		acct, _ := s.bc.Balance(wlt.Address)
+		req.Nonce = acct.Nonce + 1
+	}
+
+	tx := Transaction{
+		Type:       TxTransfer,
+		ChainID:    s.bc.ChainID,
+		FromPubKey: wlt.PublicKey,
+		ToAddress:  req.ToAddress,
+		Amount:     req.Amount,
+		Fee:        req.Fee,
+		Nonce:      req.Nonce,
+		Data:       req.Data,
+	}
+
+	nextHeight := s.bc.LatestBlock().Height + 1
+	h, err := txSigningHashForConsensus(tx, s.bc.consensus, nextHeight)
+	if err != nil {
+		_ = writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		return
+	}
+	tx.Signature = ed25519.Sign(wlt.PrivateKey, h)
+
+	txid, _ := TxIDHex(tx)
+
+	txJSON, _ := json.Marshal(tx)
+
+	_ = writeJSON(w, http.StatusOK, map[string]any{
+		"tx":      tx,
+		"txJson":  string(txJSON),
+		"txid":    txid,
+		"signed":  true,
+		"from":    wlt.Address,
+		"nonce":   tx.Nonce,
+		"chainId": tx.ChainID,
+	})
 }

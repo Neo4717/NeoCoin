@@ -18,3 +18,20 @@ func ExplorerFileServer() http.Handler {
 	}
 	return http.FileServer(http.FS(sub))
 }
+
+func WalletFileServer() http.Handler {
+	sub, err := fs.Sub(embeddedUI, "ui")
+	if err != nil {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "wallet ui not available", http.StatusInternalServerError)
+		})
+	}
+	fs := http.FS(sub)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+		if path == "" || path == "/" {
+			path = "/wallet.html"
+		}
+		http.FileServer(fs).ServeHTTP(w, r)
+	})
+}

@@ -1,6 +1,4 @@
-# Neocoin Tokenomics (v0.1 — Prototype)
-
-> **Warning:** This is prototype tokenomics. No mainnet exists. Numbers may change significantly before launch.
+# NeoCoin Tokenomics
 
 ## Basic Parameters
 
@@ -56,9 +54,9 @@ After ~33 halvings (~133 years), block reward approaches zero. Maximum supply of
 
 ## Important Notes
 
-1. **No mainnet yet.** These parameters are for testnet/educational use.
+1. **Testnet phase.** These parameters apply to the current testnet.
 2. **AI Auditor does NOT affect tokenomics.** It's a policy check only, not part of consensus.
-3. **Subject to change** before any mainnet launch.
+3. Parameters subject to future governance decisions.
 4. **No economic value** — testnet tokens are worth nothing.
 
 ## Future Considerations (not implemented)
@@ -70,4 +68,4 @@ After ~33 halvings (~133 years), block reward approaches zero. Maximum supply of
 
 ---
 
-*Last updated: March 2026 — v0.1 prototype*
+*Last updated: March 2026*

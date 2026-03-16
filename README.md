@@ -1,46 +1,65 @@
-# NeoCoin
+# NeoCoin (NEO)
 
-**Educational Proof-of-Work blockchain with optional AI policy auditing.**
+**An open-source Proof-of-Work blockchain with an optional AI policy layer.**
 
-> ⚠️ **Warning:** This is a **prototype** — no mainnet exists yet. Use for learning/development only. No economic value.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker)](https://docker.com/)
+[![Testnet](https://img.shields.io/badge/Testnet-Live-blue)](https://github.com/Neo4717/NeoCoin/actions)
 
-## Overview
+> **Status: Pre-Alpha Testnet**  
+> NeoCoin is early-stage blockchain software. The testnet is live for development and testing. Breaking changes are expected during this phase.
 
-NeoCoin is an experimental cryptocurrency blockchain built with Go. It implements:
+## Vision
 
-- **Proof-of-Work** consensus (SHA-256-like)
-- **Bitcoin-style** halving schedule (21M max supply)
-- **Optional AI Auditor** for policy checking (via external API)
-- **Ed25519** public key cryptography
-- **WebSocket** support for real-time updates
+Building a modern PoW chain with clear protocol rules, conservative security, and a **pluggable AI policy layer** for optional transaction screening and compliance experiments.
 
-## Quick Start
+## What is NeoCoin?
+
+NeoCoin is a Layer-1 blockchain implementing:
+
+- **Proof-of-Work consensus** (SHA-256-like hashing)
+- **Bitcoin-style issuance** (21M max supply, halving every 210K blocks)
+- **Ed25519 cryptography** for fast, secure signatures
+- **Optional AI Auditor** for policy compliance checks (non-consensus)
+- **WebSocket support** for real-time updates
+- **HTTP REST API** for easy integration
+
+### Quick Links
+
+| Resource | URL |
+|----------|-----|
+| Web Wallet | `/wallet/` |
+| Block Explorer | `/explorer/` |
+| API Documentation | See below |
+
+## Getting Started
 
 ### Prerequisites
 
 - Docker & Docker Compose
-- ~2GB RAM available
+- ~2GB RAM
 
-### Run a Node
+### Run a Node (Local)
 
 ```bash
 # Clone the repository
 git clone https://github.com/Neo4717/NeoCoin.git
 cd NeoCoin
 
-# Copy and edit environment file
-cp .env.example .env
-# Edit .env and set ADMIN_TOKEN (required!)
-
-# Start the node
-docker compose up -d blockchain
+# Start a local node
+docker compose -f docker-compose.public.yml up -d
 
 # Check status
 curl http://127.0.0.1:8080/chain/info
 ```
 
-### Generate Wallet
+### Generate a Wallet
 
+**Web Wallet** (recommended):
+Open http://localhost:8080/wallet/ in your browser.
+
+**CLI**:
 ```bash
 docker compose run --rm blockchain ./blockchain create_wallet
 ```
@@ -48,27 +67,41 @@ docker compose run --rm blockchain ./blockchain create_wallet
 ### Start Mining
 
 ```bash
-# Edit .env and set:
-# MINER_ADDRESS=your_wallet_address
-# AUTO_MINE=true
+# Set your wallet address
+export MINER_ADDRESS=your_wallet_address
+export AUTO_MINE=true
 
-docker compose up -d blockchain
+docker compose -f docker-compose.public.yml up -d
 ```
 
-### API
+## API Endpoints
 
-| Endpoint | Description |
-|----------|-------------|
-| `GET /chain/info` | Chain status |
-| `GET /block/height/{n}` | Block by height |
-| `GET /balance/{address}` | Account balance |
-| `POST /tx` | Submit transaction |
-| `GET /mempool` | Pending transactions |
-| `GET /ws` | WebSocket for events |
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/chain/info` | GET | Chain status, height, difficulty |
+| `/balance/{address}` | GET | Account balance and nonce |
+| `/tx` | POST | Submit a transaction |
+| `/tx/{txid}` | GET | Get transaction by ID |
+| `/block/height/{n}` | GET | Get block by height |
+| `/mempool` | GET | View pending transactions |
+| `/wallet/create` | POST | Generate new wallet |
+| `/wallet/sign` | POST | Sign transaction (server-side) |
+| `/ws` | WS | WebSocket for events |
 
-Example:
+### Example: Check Balance
+
 ```bash
-curl http://127.0.0.1:8080/chain/info
+curl http://127.0.0.1:8080/balance/YOUR_ADDRESS
+```
+
+### Example: Send Transaction
+
+```bash
+# Using the CLI
+docker compose run --rm blockchain ./blockchain send \
+  YOUR_PRIVATE_KEY_B64 \
+  RECIPIENT_ADDRESS \
+  AMOUNT
 ```
 
 ## Configuration
@@ -77,57 +110,68 @@ curl http://127.0.0.1:8080/chain/info
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `ADMIN_TOKEN` | (required) | Admin token for protected endpoints |
-| `CHAIN_ID` | 1 | Chain ID (1=mainnet, 2=testnet) |
+| `CHAIN_ID` | 1 | Chain ID (1=mainnet) |
 | `GENESIS_PATH` | genesis/mainnet.json | Genesis file |
 | `MINER_ADDRESS` | - | Mining reward address |
 | `AUTO_MINE` | false | Enable automatic mining |
-| `MINE_FORCE_EMPTY_BLOCKS` | false | Mine even with no txs |
-| `AI_AUDITOR_URL` | - | AI auditor endpoint |
-| `RATE_LIMIT_REQUESTS` | 100 | Rate limit (req/s) |
-| `RATE_LIMIT_BURST` | 20 | Rate limit burst |
+| `ADMIN_TOKEN` | - | Admin token for protected endpoints |
+| `AI_AUDITOR_URL` | - | AI auditor endpoint (optional) |
+| `P2P_ENABLE` | false | Enable P2P networking |
+| `WS_ENABLE` | true | Enable WebSocket |
 
-### Networks
+## Roadmap
 
-- **Mainnet**: `docker compose -f docker-compose.mainnet.yml up`
-- **Testnet**: `docker compose -f docker-compose.testnet.yml up`
-- **Smoke test**: `docker compose -f docker-compose.smoke.yml up`
+Milestones may shift based on contributors and security findings.
+
+- **Q2 2026**: Basic P2P gossip + multi-node sync
+- **Q3 2026**: Private testnet (5–10 volunteer nodes)
+- **Q4 2026**: Public testnet + improved difficulty adjustment
+- **2027**: Light-client exploration + minimal scripting/covenants
+
+See `docs/ROADMAP.md` for the detailed long-term roadmap.
+
+## Tokenomics
+
+- **Maximum Supply**: 21,000,000 NEO
+- **Block Reward**: 50 NEO (halving every 210,000 blocks)
+- **Premine**: None
+- **Consensus**: Proof-of-Work
+- **Halving**: ~4 years (like Bitcoin)
+
+See [TOKENOMICS.md](./docs/TOKENOMICS.md) for details.
+
+## Security Notes
+
+1. **P2P networking** — only connect to trusted peers in early testnet
+2. **AI auditor is NOT part of consensus** — it's a policy check only
+3. **Testnet phase** — this is pre-alpha software
+4. **Use at your own risk** — no warranties
+
+See [SECURITY.md](./SECURITY.md) for full security considerations.
+
+## Community
+
+- **Discord**: [Join NeoCoin](https://discord.gg/neocoin-project)
+- **Telegram**: [NeoCoin Chat](https://t.me/neocoin_network)
+- **X/Twitter**: [@NeoCoinChain](https://x.com/NeoCoinChain)
+- **GitHub**: https://github.com/Neo4717/NeoCoin
+- **Issues**: Use GitHub Issues for bugs/feature requests
 
 ## Documentation
 
 - [TOKENOMICS.md](./docs/TOKENOMICS.md) - Token economics
 - [SPEC.md](./docs/SPEC.md) - Technical specification
-- [SECURITY.md](./docs/SECURITY.md) - Security considerations
+- [SECURITY.md](./SECURITY.md) - Security considerations
 - [ROADMAP.md](./docs/ROADMAP.md) - Future plans
-
-## Status
-
-- ✅ Basic blockchain works
-- ✅ Mining functional
-- ✅ Transaction support
-- ✅ WebSocket events
-- ⚠️ **No mainnet** — testnet only
-- ⚠️ **No public P2P network** — single node only
-
-## Limitations
-
-1. **No mainnet** — This is testnet/prototype only
-2. **No value** — Tokens have no economic value
-3. **Single node** — No peer-to-peer network yet
-4. **Educational** — For learning purposes only
-5. **No support** — No warranty, no support team
-
-## Contributing
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## License
 
 MIT — see [LICENSE](./LICENSE).
 
-## Warnings
+## Contributing
 
-- ⚠️ **Experimental software** — Use at your own risk
-- ⚠️ **No mainnet** — Numbers may change before launch
-- ⚠️ **No token sale** — We will never sell tokens
-- ⚠️ **No financial advice** — This is not financial advice
+See [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+---
+
+**DISCLAIMER**: NeoCoin is experimental software in pre-alpha. It implements working blockchain technology but has no monetary value. Never use with real funds. The maintainers are not responsible for any losses.
