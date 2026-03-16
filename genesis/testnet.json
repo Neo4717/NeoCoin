@@ -2,7 +2,7 @@
   "network": "neocoin-testnet",
   "chainId": 2,
   "timestamp": 1735689600,
-  "genesisMinerAddress": "NEO003443801b09ea6944c536748280af44904290e4b21eee12ad228b89eacc0ad81f4329c20a15407e82d58294",
+  "genesisMinerAddress": "NEO0000215cb488337e53199586744599db99d497e4f8d4ec8c49779e7c01f2c8a6ef0cbed3cd3d",
   "initialSupply": "10000000000000",
   "genesisMessage": "Neocoin Testnet - Development and Experiments - 2025",
   "monetaryPolicy": {
