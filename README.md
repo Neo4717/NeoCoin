@@ -6,6 +6,9 @@
 [![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker)](https://docker.com/)
 [![Testnet](https://img.shields.io/badge/Testnet-Live-blue)](https://github.com/Neo4717/NeoCoin/actions)
+[![Discord](https://img.shields.io/discord/123456789?label=Discord&logo=discord)](https://discord.gg/neocoin)
+[![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Live-green?style=flat)](https://neo4717.github.io/NeoCoin/)
+[![Blockchain](https://img.shields.io/badge/Educational%20PoW-4B0082?style=flat)](#)
 
 > **Status: Pre-Alpha Testnet**  
 > NeoCoin is early-stage blockchain software. The testnet is live for development and testing. Breaking changes are expected during this phase.
