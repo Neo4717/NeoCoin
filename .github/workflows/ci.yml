@@ -16,11 +16,12 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
+          cache: true
           
       - name: Build
         run: |
           cd blockchain
-          go build ./...
+          go build -o blockchain .
           
       - name: Format check
         run: |
@@ -35,4 +36,39 @@ jobs:
       - name: Test
         run: |
           cd blockchain
-          go test ./...
+          go test -v ./...
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+          
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout=5m
+
+  docker:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Build Docker image
+        run: |
+          docker compose -f docker-compose.public.yml build
+          
+      - name: Test container runs
+        run: |
+          docker compose -f docker-compose.public.yml up -d
+          sleep 5
+          docker compose -f docker-compose.public.yml ps
+          docker compose -f docker-compose.public.yml down
