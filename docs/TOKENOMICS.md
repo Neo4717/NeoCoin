@@ -27,7 +27,7 @@
 ## Fees
 
 - **Transaction fees:** 100% goes to miner
-- **No fee burn** in v0.1
+- **No fee burn** in v1.0
 - **Minimum fee:** 1 unit (subject to change)
 
 ## Emission Schedule
@@ -44,7 +44,7 @@ After ~33 halvings (~133 years), block reward approaches zero. Maximum supply of
 
 ## Comparison to Bitcoin
 
-| Metric | Bitcoin | Neocoin (v0.1) |
+| Metric | Bitcoin | NeoCoin (v1.0) |
 |--------|---------|----------------|
 | Max Supply | 21,000,000 | 21,000,000 |
 | Initial Reward | 50 BTC | 50 NEO |
@@ -54,10 +54,9 @@ After ~33 halvings (~133 years), block reward approaches zero. Maximum supply of
 
 ## Important Notes
 
-1. **Testnet phase.** These parameters apply to the current testnet.
+1. These parameters apply to the mainnet.
 2. **AI Auditor does NOT affect tokenomics.** It's a policy check only, not part of consensus.
 3. Parameters subject to future governance decisions.
-4. **No economic value** — testnet tokens are worth nothing.
 
 ## Future Considerations (not implemented)
 
