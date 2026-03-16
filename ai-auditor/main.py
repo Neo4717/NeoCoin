@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
 import os
 import json
 import hashlib
@@ -8,6 +8,14 @@ import re
 from datetime import datetime
 from collections import defaultdict
 import threading
+from advanced_ai import (
+    ml_score_transaction,
+    record_transaction,
+    get_address_profile,
+    get_global_stats,
+    detect_anomaly_zscore,
+    analyze_frequency,
+)
 
 # Thread-safe audit log storage
 audit_lock = threading.Lock()
@@ -195,6 +203,28 @@ def analyze_local(tx: Transaction) -> tuple[bool, str, float, list[str]]:
         return True, "Low risk - transaction approved", risk_score, checks_passed
 
 
+def analyze_ml(tx: Transaction) -> Tuple[bool, str, float]:
+    """
+    ML-based analysis using statistical anomaly detection.
+    Returns: (is_valid, reason, ml_risk_score)
+    """
+    sender = tx.sender.lower() if tx.sender else ""
+    recipient = tx.recipient.lower() if tx.recipient else ""
+    data = tx.data.lower() if tx.data else ""
+    timestamp = datetime.utcnow()
+
+    ml_score = ml_score_transaction(sender, recipient, tx.amount, data, timestamp)
+
+    record_transaction(sender, recipient, tx.amount)
+
+    if ml_score >= 60.0:
+        return False, f"ML detected high risk: {ml_score:.1f}", ml_score
+    elif ml_score >= 35.0:
+        return True, f"ML moderate risk: {ml_score:.1f}", ml_score
+    else:
+        return True, f"ML low risk: {ml_score:.1f}", ml_score
+
+
 def log_audit(request: AIRequest, response: AIResponse, process_time_ms: float):
     """Thread-safe audit logging"""
     timestamp = datetime.utcnow().isoformat() + "Z"
@@ -250,11 +280,21 @@ async def audit_transaction(request: AIRequest):
         # Use local pattern-based analysis
         is_valid, reason, risk_score, checks_passed = analyze_local(request.transaction)
 
+        # Add ML-based analysis
+        ml_valid, ml_reason, ml_score = analyze_ml(request.transaction)
+
+        combined_score = (risk_score + ml_score) / 2
+        final_valid = is_valid and ml_valid
+        final_reason = f"{reason}; ML: {ml_reason}"
+
+        if ml_score > risk_score:
+            combined_score = ml_score
+
         process_time = (datetime.utcnow() - start_time).total_seconds() * 1000
         response = AIResponse(
-            valid=is_valid,
-            reason=reason,
-            risk_score=round(risk_score, 2),
+            valid=final_valid,
+            reason=final_reason,
+            risk_score=round(combined_score, 2),
             checks_passed=checks_passed if checks_passed else [],
         )
 
@@ -293,6 +333,24 @@ async def get_stats():
     """Get audit statistics"""
     with audit_lock:
         return stats
+
+
+@app.get("/ai/stats")
+async def get_ai_stats():
+    """Get ML/AI statistics"""
+    return get_global_stats()
+
+
+@app.get("/ai/profile/{address}")
+async def get_address_ai_profile(address: str):
+    """Get AI-generated address profile"""
+    return get_address_profile(address.lower())
+
+
+@app.post("/ai/train")
+async def train_model():
+    """Retrain the ML model with current data"""
+    return {"status": "training_not_required", "reason": "online_learning_enabled"}
 
 
 @app.get("/logs")
