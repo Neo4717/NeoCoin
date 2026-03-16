@@ -1,4 +1,4 @@
-module github.com/yourusername/self-governing-blockchain/blockchain
+module github.com/Neo4717/NeoCoin
 
 go 1.21
 
