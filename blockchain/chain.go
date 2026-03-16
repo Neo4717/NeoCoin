@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"strings"
 	"sync"
 	"time"
 )
@@ -67,8 +68,12 @@ func LoadBlockchain(chainID uint64, minerAddress string, store ChainStore, genes
 	}
 
 	if minerAddress != "" {
-		if err := validateAddress(minerAddress); err != nil {
-			return nil, fmt.Errorf("invalid MINER_ADDRESS: %w", err)
+		// Validate - allow both raw hex and NEO00 address formats
+		if !strings.HasPrefix(minerAddress, "NEO") {
+			// Raw hex format - validate directly
+			if _, err := hex.DecodeString(minerAddress); err != nil {
+				return nil, fmt.Errorf("invalid MINER_ADDRESS (not hex or NEO00): %w", err)
+			}
 		}
 	}
 
