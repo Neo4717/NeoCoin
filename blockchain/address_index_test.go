@@ -2,8 +2,6 @@ package main
 
 import (
 	"crypto/ed25519"
-	"crypto/sha256"
-	"encoding/hex"
 	"testing"
 )
 
@@ -15,16 +13,14 @@ func TestAddressIndexUpdatesOnMineAndReorg(t *testing.T) {
 		t.Fatal(err)
 	}
 	minerPub := minerPriv.Public().(ed25519.PublicKey)
-	minerSum := sha256.Sum256(minerPub)
-	minerAddr := hex.EncodeToString(minerSum[:])
+	minerAddr := GenerateAddress(minerPub)
 
 	_, recipPriv, err := ed25519.GenerateKey(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	recipPub := recipPriv.Public().(ed25519.PublicKey)
-	recipSum := sha256.Sum256(recipPub)
-	recipAddr := hex.EncodeToString(recipSum[:])
+	recipAddr := GenerateAddress(recipPub)
 
 	consensus := defaultTestConsensusJSON()
 	consensus.GenesisDifficultyBits = 1

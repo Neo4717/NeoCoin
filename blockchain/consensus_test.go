@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/ed25519"
-	"crypto/sha256"
 	"encoding/hex"
 	"testing"
 	"time"
@@ -39,16 +38,14 @@ func TestApplyBlockToState_CoinbaseEconomics(t *testing.T) {
 		t.Fatal(err)
 	}
 	pub := priv.Public().(ed25519.PublicKey)
-	minerSum := sha256.Sum256(pub)
-	minerAddr := hex.EncodeToString(minerSum[:])
+	minerAddr := GenerateAddress(pub)
 
 	_, recipPriv, err := ed25519.GenerateKey(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	recipPub := recipPriv.Public().(ed25519.PublicKey)
-	recipSum := sha256.Sum256(recipPub)
-	recipAddr := hex.EncodeToString(recipSum[:])
+	recipAddr := GenerateAddress(recipPub)
 
 	state := map[string]Account{}
 	policy := testMonetaryPolicy()
@@ -253,7 +250,7 @@ func mineTestBlock(t *testing.T, p ConsensusParams, b *Block) {
 
 func TestForkChoicePrefersMoreWork(t *testing.T) {
 	store := newMemChainStore()
-	miner := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	miner := TestAddressMiner
 
 	// Build a chain with low difficulty so mining is fast/deterministic.
 	consensus := defaultTestConsensusJSON()
@@ -322,7 +319,7 @@ func TestForkChoicePrefersMoreWork(t *testing.T) {
 
 func TestDifficultyEnforcedWhenEnabled(t *testing.T) {
 	store := newMemChainStore()
-	miner := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	miner := TestAddressMiner
 	consensus := defaultTestConsensusJSON()
 	consensus.GenesisDifficultyBits = 2
 	genesisPath := writeTestGenesisFile(t, t.TempDir(), defaultChainID, miner, 1000000, consensus)

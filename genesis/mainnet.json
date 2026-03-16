@@ -2,7 +2,7 @@
   "network": "neocoin-mainnet",
   "chainId": 1,
   "timestamp": 1740441600,
-  "genesisMinerAddress": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "genesisMinerAddress": "NEOACMDga9OQ8asechbJIWPne/PadBMgNZxai7+7goCEZ4V1N0hKg==",
   "initialSupply": "2100000000000000",
   "genesisMessage": "Neocoin launches - Educational PoW chain with AI auditor - February 2025",
   "monetaryPolicy": {

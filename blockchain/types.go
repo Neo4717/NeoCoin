@@ -44,13 +44,7 @@ type Transaction struct {
 }
 
 func validateAddress(addr string) error {
-	if len(addr) != 64 {
-		return fmt.Errorf("invalid address length: %d", len(addr))
-	}
-	if _, err := hex.DecodeString(addr); err != nil {
-		return errors.New("invalid address encoding (expected hex)")
-	}
-	return nil
+	return ValidateAddress(addr)
 }
 
 func (t Transaction) FromAddress() (string, error) {
@@ -60,8 +54,7 @@ func (t Transaction) FromAddress() (string, error) {
 	if len(t.FromPubKey) != ed25519.PublicKeySize {
 		return "", fmt.Errorf("invalid fromPubKey length: %d", len(t.FromPubKey))
 	}
-	sum := sha256.Sum256(t.FromPubKey)
-	return hex.EncodeToString(sum[:]), nil
+	return GenerateAddress(t.FromPubKey), nil
 }
 
 // signingHashLegacyJSON is the original signing hash used by this prototype.

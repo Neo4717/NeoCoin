@@ -3,9 +3,7 @@ package main
 import (
 	"crypto/ed25519"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/base64"
-	"encoding/hex"
 	"errors"
 )
 
@@ -20,11 +18,10 @@ func NewWallet() (*Wallet, error) {
 	if err != nil {
 		return nil, err
 	}
-	sum := sha256.Sum256(pub)
 	return &Wallet{
 		PrivateKey: priv,
 		PublicKey:  pub,
-		Address:    hex.EncodeToString(sum[:]),
+		Address:    GenerateAddress(pub),
 	}, nil
 }
 
@@ -38,11 +35,10 @@ func WalletFromPrivateKeyBase64(privB64 string) (*Wallet, error) {
 	}
 	priv := ed25519.PrivateKey(raw)
 	pub := priv.Public().(ed25519.PublicKey)
-	sum := sha256.Sum256(pub)
 	return &Wallet{
 		PrivateKey: priv,
 		PublicKey:  pub,
-		Address:    hex.EncodeToString(sum[:]),
+		Address:    GenerateAddress(pub),
 	}, nil
 }
 
