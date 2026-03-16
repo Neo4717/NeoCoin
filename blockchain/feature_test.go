@@ -2,6 +2,7 @@ package main
 
 import (
 	"testing"
+	"time"
 )
 
 func TestVMBasic(t *testing.T) {
@@ -119,5 +120,106 @@ func TestGenerateAddress(t *testing.T) {
 
 	if addr[:3] != "NEO" {
 		t.Errorf("Expected NEO prefix, got %s", addr[:3])
+	}
+}
+
+func TestDNSDomainRegistration(t *testing.T) {
+	db := NewDNSDatabase()
+
+	err := db.RegisterDomain("alice.neo", "NEO00abc123", "解析器地址", 86400)
+	if err != nil {
+		t.Errorf("Failed to register domain: %v", err)
+	}
+
+	record, err := db.Resolve("alice.neo")
+	if err != nil {
+		t.Errorf("Failed to resolve domain: %v", err)
+	}
+
+	if record.Owner != "NEO00abc123" {
+		t.Errorf("Expected owner NEO00abc123, got %s", record.Owner)
+	}
+}
+
+func TestGovernanceProposal(t *testing.T) {
+	gs := NewGovernanceSystem()
+
+	prop, err := gs.CreateProposal(
+		"Increase Block Reward",
+		"Proposal to increase block reward from 50 to 100",
+		"NEO00abc123",
+		"parameter",
+		"blockReward",
+		"100",
+		time.Millisecond*100,
+	)
+	if err != nil {
+		t.Errorf("Failed to create proposal: %v", err)
+	}
+
+	err = gs.CastVote(prop.ID, "voter1", true, 1000000)
+	if err != nil {
+		t.Errorf("Failed to cast vote: %v", err)
+	}
+
+	time.Sleep(time.Millisecond * 200)
+
+	status, err := gs.TallyProposal(prop.ID)
+	if err != nil {
+		t.Errorf("Failed to tally: %v", err)
+	}
+
+	if status != ProposalStatusPassed {
+		t.Errorf("Expected passed, got %s", status)
+	}
+}
+
+func TestPriceOracle(t *testing.T) {
+	po := NewPriceOracle()
+
+	po.SetPrice("Binance", "BTC", 50000000000, 8, "sig1")
+	po.SetPrice("Coinbase", "BTC", 50100000000, 8, "sig2")
+
+	price, err := po.GetPrice("BTC")
+	if err != nil {
+		t.Errorf("Failed to get price: %v", err)
+	}
+
+	if price == 0 {
+		t.Error("Expected non-zero price")
+	}
+}
+
+func TestSocialRecovery(t *testing.T) {
+	sr := NewSocialRecovery()
+
+	guardians := []string{"guardian1", "guardian2", "guardian3"}
+	err := sr.SetupRecovery("owner", guardians, 2, time.Hour*24)
+	if err != nil {
+		t.Errorf("Failed to setup recovery: %v", err)
+	}
+
+	reqID, err := sr.InitiateRecovery("owner", "newOwner", "guardian1")
+	if err != nil {
+		t.Errorf("Failed to initiate: %v", err)
+	}
+
+	err = sr.ConfirmRecovery(reqID, "guardian1")
+	if err != nil {
+		t.Errorf("Failed to confirm: %v", err)
+	}
+
+	err = sr.ConfirmRecovery(reqID, "guardian2")
+	if err != nil {
+		t.Errorf("Failed to confirm: %v", err)
+	}
+
+	newOwner, err := sr.CompleteRecovery(reqID)
+	if err != nil {
+		t.Errorf("Failed to complete: %v", err)
+	}
+
+	if newOwner != "newOwner" {
+		t.Errorf("Expected newOwner, got %s", newOwner)
 	}
 }
