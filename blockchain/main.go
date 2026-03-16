@@ -110,7 +110,7 @@ func main() {
 		}
 		if p2pEnable {
 			p2pListen := strings.TrimSpace(os.Getenv("P2P_LISTEN_ADDR"))
-			p2pSrv := NewP2PServer(bc, syncPM, p2pListen, nodeID)
+			p2pSrv := NewP2PServer(bc, syncPM, mp, p2pListen, nodeID)
 			go func() {
 				if err := p2pSrv.Serve(ctx); err != nil {
 					log.Printf("p2p server error: %v", err)

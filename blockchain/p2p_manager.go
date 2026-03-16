@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 )
 
@@ -76,8 +77,15 @@ func (pm *P2PPeerManager) FetchAnyBlockByHash(ctx context.Context, hashHex strin
 	return nil, "", lastErr
 }
 
-func (pm *P2PPeerManager) BroadcastTransaction(_ context.Context, _ Transaction, _ int) {
-	// Not implemented yet for P2P transport.
+func (pm *P2PPeerManager) BroadcastTransaction(ctx context.Context, tx Transaction, _ int) {
+	for _, peer := range pm.peers {
+		go func(p string) {
+			_, err := pm.client.BroadcastTransaction(ctx, p, tx)
+			if err != nil {
+				log.Printf("p2p broadcast tx to %s failed: %v", p, err)
+			}
+		}(peer)
+	}
 }
 
 func (pm *P2PPeerManager) EnsureAncestors(ctx context.Context, bc *Blockchain, missingHashHex string) error {

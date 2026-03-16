@@ -100,3 +100,33 @@ func (c *P2PClient) do(ctx context.Context, peer string, reqType string, reqPayl
 	}
 	return nil
 }
+
+type p2pTxResponse struct {
+	TxID string `json:"txid"`
+}
+
+func (c *P2PClient) RequestTransaction(ctx context.Context, peer string, tx Transaction) (string, error) {
+	txJSON, err := json.Marshal(tx)
+	if err != nil {
+		return "", err
+	}
+	var resp p2pTxResponse
+	err = c.do(ctx, peer, "tx_req", p2pTransactionReq{TxHex: string(txJSON)}, &resp, "tx_ack")
+	if err != nil {
+		return "", err
+	}
+	return resp.TxID, nil
+}
+
+func (c *P2PClient) BroadcastTransaction(ctx context.Context, peer string, tx Transaction) (string, error) {
+	txJSON, err := json.Marshal(tx)
+	if err != nil {
+		return "", err
+	}
+	var resp p2pTxResponse
+	err = c.do(ctx, peer, "tx_broadcast", p2pTransactionBroadcast{TxHex: string(txJSON)}, &resp, "tx_broadcast_ack")
+	if err != nil {
+		return "", err
+	}
+	return resp.TxID, nil
+}
