@@ -1,20 +1,30 @@
-# Use the official Python image
-FROM python:3.9-slim-buster
+FROM python:3.11-slim AS builder
 
-# Set the working directory in the container
 WORKDIR /app
 
-# Copy the requirements file into the container
-COPY requirements.txt ./
-
-# Install any needed packages specified in requirements.txt
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application code
+FROM python:3.11-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
 COPY . .
 
-# Expose the port that FastAPI will run on
+RUN mkdir -p /app/data
+
 EXPOSE 8000
 
-# Command to run the FastAPI application
+LABEL org.opencontainers.image.version="1.0"
+LABEL org.opencontainers.image.description="NeoCoin AI Auditor - Transaction policy validation"
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
