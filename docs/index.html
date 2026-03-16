@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="NeoCoin - AI-Powered Proof-of-Work Blockchain with Smart Contracts, DNS, and Governance">
+  <title>NeoCoin (NEO) | AI-Powered PoW Blockchain</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛏️</text></svg>">
+  <style>
+    :root {
+      --bg: #0a0e17;
+      --bg-grad: linear-gradient(135deg, #0a0e17 0%, #1a1f35 100%);
+      --card: rgba(255,255,255,0.03);
+      --card-hover: rgba(255,255,255,0.06);
+      --text: #f0f4f8;
+      --text-muted: #8b9cb8;
+      --accent: #00d4ff;
+      --accent-glow: 0 0 40px rgba(0,212,255,0.3);
+      --success: #00e676;
+      --warning: #ffab00;
+      --purple: #b388ff;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg-grad);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+    
+    /* Header */
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      padding: 20px 0;
+      background: rgba(10,14,23,0.8);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .logo {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .logo span { color: var(--accent); }
+    .nav-links {
+      display: flex;
+      gap: 30px;
+      list-style: none;
+    }
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.3s;
+    }
+    .nav-links a:hover { color: var(--accent); }
+    .nav-cta {
+      display: flex;
+      gap: 12px;
+    }
+    .btn {
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.3s;
+      border: none;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: var(--bg);
+    }
+    .btn-primary:hover {
+      box-shadow: var(--accent-glow);
+      transform: translateY(-2px);
+    }
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--accent);
+      color: var(--accent);
+    }
+    .btn-secondary:hover {
+      background: rgba(0,212,255,0.1);
+    }
+    
+    /* Hero */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 120px 20px 80px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: 20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(0,212,255,0.1) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: rgba(0,212,255,0.1);
+      border: 1px solid rgba(0,212,255,0.3);
+      border-radius: 50px;
+      font-size: 13px;
+      color: var(--accent);
+      margin-bottom: 24px;
+    }
+    .hero h1 {
+      font-size: clamp(40px, 8vw, 72px);
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 24px;
+      background: linear-gradient(135deg, #fff 0%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      font-size: 18px;
+      color: var(--text-muted);
+      max-width: 600px;
+      margin: 0 auto 40px;
+    }
+    .hero-stats {
+      display: flex;
+      justify-content: center;
+      gap: 60px;
+      margin-top: 60px;
+    }
+    .stat {
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .stat-label {
+      font-size: 13px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    /* Features */
+    .features { padding: 100px 0; }
+    .section-header {
+      text-align: center;
+      margin-bottom: 60px;
+    }
+    .section-header h2 {
+      font-size: 40px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+    .section-header p {
+      color: var(--text-muted);
+      font-size: 18px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+    }
+    .feature-card {
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 16px;
+      padding: 32px;
+      transition: all 0.3s;
+    }
+    .feature-card:hover {
+      background: var(--card-hover);
+      transform: translateY(-4px);
+      border-color: rgba(0,212,255,0.3);
+    }
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, var(--accent), var(--purple));
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+    .feature-card h3 {
+      font-size: 20px;
+      margin-bottom: 12px;
+    }
+    .feature-card p {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    
+    /* Tech Stack */
+    .tech { padding: 100px 0; background: rgba(0,0,0,0.3); }
+    .tech-grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 40px;
+      margin-top: 40px;
+    }
+    .tech-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      opacity: 0.7;
+      transition: opacity 0.3s;
+    }
+    .tech-item:hover { opacity: 1; }
+    .tech-icon {
+      width: 60px;
+      height: 60px;
+      background: var(--card);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+    .tech-name { font-size: 14px; color: var(--text-muted); }
+    
+    /* Roadmap */
+    .roadmap { padding: 100px 0; }
+    .roadmap-timeline {
+      position: relative;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .roadmap-item {
+      display: flex;
+      gap: 30px;
+      margin-bottom: 40px;
+      position: relative;
+    }
+    .roadmap-marker {
+      width: 20px;
+      height: 20px;
+      background: var(--accent);
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+    .roadmap-content {
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 24px;
+      flex: 1;
+    }
+    .roadmap-content h3 {
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+    .roadmap-content ul {
+      list-style: none;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    .roadmap-content li {
+      padding: 4px 0;
+      padding-left: 20px;
+      position: relative;
+    }
+    .roadmap-content li::before {
+      content: '→';
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+    }
+    .phase-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      background: rgba(0,212,255,0.2);
+      color: var(--accent);
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    
+    /* Community */
+    .community {
+      padding: 100px 0;
+      text-align: center;
+      background: linear-gradient(180deg, transparent, rgba(0,212,255,0.05));
+    }
+    .community h2 {
+      font-size: 40px;
+      margin-bottom: 16px;
+    }
+    .community p {
+      color: var(--text-muted);
+      margin-bottom: 40px;
+    }
+    .social-links {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .social-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 32px;
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      text-decoration: none;
+      color: var(--text);
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+    .social-link:hover {
+      background: var(--card-hover);
+      border-color: var(--accent);
+      transform: translateY(-4px);
+    }
+    .social-icon {
+      font-size: 24px;
+    }
+    
+    /* Footer */
+    footer {
+      padding: 60px 0 40px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    .footer-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .footer-links {
+      display: flex;
+      gap: 30px;
+    }
+    .footer-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 14px;
+    }
+    .footer-links a:hover { color: var(--accent); }
+    .footer-copy {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    
+    /* Mobile */
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .hero-stats { flex-direction: column; gap: 30px; }
+      .roadmap-item { flex-direction: column; gap: 16px; }
+    }
+    
+    /* Animations */
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    .floating { animation: float 3s ease-in-out infinite; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <nav>
+        <a href="#" class="logo">Neo<span>Coin</span></a>
+        <ul class="nav-links">
+          <li><a href="#features">Features</a></li>
+          <li><a href="#tech">Technology</a></li>
+          <li><a href="#roadmap">Roadmap</a></li>
+          <li><a href="#community">Community</a></li>
+        </ul>
+        <div class="nav-cta">
+          <a href="https://github.com/Neo4717/NeoCoin" class="btn btn-secondary">GitHub</a>
+          <a href="https://discord.gg/neocoin" class="btn btn-primary">Join Discord</a>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="container">
+      <div class="hero-badge">
+        <span>●</span> AI-Powered Proof-of-Work Blockchain
+      </div>
+      <h1>The Future of<br>Decentralized Finance</h1>
+      <p>
+        NeoCoin is an open-source Proof-of-Work blockchain with integrated AI for network security, 
+        smart contracts, on-chain governance, and decentralized DNS.
+      </p>
+      <div class="hero-cta">
+        <a href="https://github.com/Neo4717/NeoCoin" class="btn btn-primary">Get Started</a>
+        <a href="#features" class="btn btn-secondary">Learn More</a>
+      </div>
+      <div class="hero-stats">
+        <div class="stat">
+          <div class="stat-value">21M</div>
+          <div class="stat-label">Max Supply</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value">Ed25519</div>
+          <div class="stat-label">Cryptography</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value">AI</div>
+          <div class="stat-label">Security</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value">MIT</div>
+          <div class="stat-label">License</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="features" class="features">
+    <div class="container">
+      <div class="section-header">
+        <h2>Why NeoCoin?</h2>
+        <p>A complete blockchain ecosystem with unique features</p>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">🤖</div>
+          <h3>AI-Powered Security</h3>
+          <p>Built-in AI monitors the network for anomalies, spam, and suspicious patterns in real-time.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">⛏️</div>
+          <h3>Proof-of-Work</h3>
+          <p>Classic PoW consensus with 21M max supply and Bitcoin-style halving every 210K blocks.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📝</div>
+          <h3>Smart Contracts</h3>
+          <p>Stack-based VM with gas tracking, multi-sig support, and NEP-17 token standard.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🌐</div>
+          <h3>.neo DNS</h3>
+          <p>On-chain domain name system. Register your identity as alice.neo on the blockchain.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🗳️</div>
+          <h3>On-Chain Governance</h3>
+          <p>Community-driven upgrades through transparent voting and proposal system.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔐</div>
+          <h3>Social Recovery</h3>
+          <p>Recover your wallet through trusted guardians. No seed phrase dependency.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔮</div>
+          <h3>Price Oracle</h3>
+          <p>Multi-source price feeds for DeFi applications and smart contracts.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📱</div>
+          <h3>Light Client</h3>
+          <p>SPV wallet for mobile. Verify payments without downloading the entire chain.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tech" class="tech">
+    <div class="container">
+      <div class="section-header">
+        <h2>Technology</h2>
+        <p>Built with modern, battle-tested technologies</p>
+      </div>
+      <div class="tech-grid">
+        <div class="tech-item">
+          <div class="tech-icon">🐹</div>
+          <span class="tech-name">Go</span>
+        </div>
+        <div class="tech-item">
+          <div class="tech-icon">🔑</div>
+          <span class="tech-name">Ed25519</span>
+        </div>
+        <div class="tech-item">
+          <div class="tech-icon">🐳</div>
+          <span class="tech-name">Docker</span>
+        </div>
+        <div class="tech-item">
+          <div class="tech-icon">📡</div>
+          <span class="tech-name">WebSocket</span>
+        </div>
+        <div class="tech-item">
+          <div class="tech-icon">🔒</div>
+          <span class="tech-name">BoltDB</span>
+        </div>
+        <div class="tech-item">
+          <div class="tech-icon">🌐</div>
+          <span class="tech-name">REST API</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="roadmap" class="roadmap">
+    <div class="container">
+      <div class="section-header">
+        <h2>Roadmap</h2>
+        <p>Our path to a decentralized future</p>
+      </div>
+      <div class="roadmap-timeline">
+        <div class="roadmap-item">
+          <div class="roadmap-marker"></div>
+          <div class="roadmap-content">
+            <span class="phase-badge">Q2 2026</span>
+            <h3>Public Testnet Launch</h3>
+            <ul>
+              <li>Multi-node P2P network</li>
+              <li>Public seed nodes</li>
+              <li>Block explorer</li>
+              <li>Wallet integration</li>
+            </ul>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="roadmap-marker"></div>
+          <div class="roadmap-content">
+            <span class="phase-badge">Q3 2026</span>
+            <h3>Security & Scale</h3>
+            <ul>
+              <li>Third-party security audit</li>
+              <li>Lightning Network research</li>
+              <li>Privacy enhancements</li>
+              <li>Exchange listings</li>
+            </ul>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="roadmap-marker"></div>
+          <div class="roadmap-content">
+            <span class="phase-badge">Q4 2026</span>
+            <h3>Mainnet Launch</h3>
+            <ul>
+              <li>Production mainnet</li>
+              <li>Mobile wallets</li>
+              <li>DeFi integration</li>
+              <li>Cross-chain bridges</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="community" class="community">
+    <div class="container">
+      <h2>Join the Community</h2>
+      <p>Be part of the NeoCoin revolution</p>
+      <div class="social-links">
+        <a href="https://discord.gg/neocoin" class="social-link" target="_blank">
+          <span class="social-icon">💬</span>
+          Discord
+        </a>
+        <a href="https://t.me/neocoin_network" class="social-link" target="_blank">
+          <span class="social-icon">✈️</span>
+          Telegram
+        </a>
+        <a href="https://x.com/NeoCoinChain" class="social-link" target="_blank">
+          <span class="social-icon">𝕏</span>
+          Twitter
+        </a>
+        <a href="https://github.com/Neo4717/NeoCoin" class="social-link" target="_blank">
+          <span class="social-icon">🐙</span>
+          GitHub
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <div class="footer-content">
+        <div class="logo">Neo<span>Coin</span></div>
+        <div class="footer-links">
+          <a href="#features">Features</a>
+          <a href="#tech">Technology</a>
+          <a href="#roadmap">Roadmap</a>
+          <a href="https://github.com/Neo4717/NeoCoin">GitHub</a>
+        </div>
+        <div class="footer-copy">
+          © 2026 NeoCoin. MIT License.
+        </div>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
