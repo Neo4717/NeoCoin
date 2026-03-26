@@ -1,111 +1,79 @@
-# NeoCoin (NEO) - Follow The White Rabbit
+# NeoCoin (NEO) 🐰
 
 > **"Neo_HIT: Follow The White Rabbit"**
-> 
 > Genesis Block Message
 
-A community-driven Proof-of-Work blockchain. Fair launch, no premine, built for everyone.
+A community-driven Proof-of-Work blockchain. Fair launch, no premine.
 
-## Why NeoCoin?
+## Quick Join (3 Steps)
 
-- **Fair Launch** - Everyone mines together, no pre-mined coins
-- **Simple** - Clean PoW consensus, no complex mechanics
-- **Your Chain** - Community owned, community run
-- **AI Security** - Deterministic AI policy engine for fraud detection
-
-## Quick Start
-
-### Clone & Build
-
+### Step 1: One Command to Join
 ```bash
-# Clone the repo
+bash -c "$(curl -s https://raw.githubusercontent.com/Neo4717/NeoCoin/main/join.sh)"
+```
+
+### Step 2: Get Peer Address
+Ask in our community for a peer address, or run solo first!
+
+### Step 3: Start Mining
+Your node will start automatically and begin mining.
+
+---
+
+## Manual Setup
+
+### 1. Clone & Build
+```bash
 git clone https://github.com/Neo4717/NeoCoin.git
 cd NeoCoin/blockchain
-
-# Build
 go build -o neocoin .
 ```
 
-### Run Your Own Node
-
+### 2. Create Wallet
 ```bash
-# Generate a wallet address
 ./neocoin create_wallet
+```
+Save your wallet address!
 
-# Run with your miner address
-MINER_ADDRESS=YOUR_WALLET_ADDRESS \
+### 3. Run Node
+```bash
+# Solo (no peers yet)
+MINER_ADDRESS=YOUR_ADDRESS \
 GENESIS_PATH=../genesis/smoke.json \
 CHAIN_ID=3 \
 AUTO_MINE=true \
+ADMIN_TOKEN=test \
 ./neocoin server
-```
 
-### Connect to Other Peers
-
-```bash
-# Add peer address (get from community)
-P2P_ENABLE=true \
+# With Peer
+MINER_ADDRESS=YOUR_ADDRESS \
 P2P_PEERS=PEER_ADDRESS:9090 \
-MINER_ADDRESS=YOUR_WALLET_ADDRESS \
 GENESIS_PATH=../genesis/smoke.json \
 CHAIN_ID=3 \
 AUTO_MINE=true \
+ADMIN_TOKEN=test \
 ./neocoin server
 ```
 
-### Check Status
+---
 
-```bash
-# Chain info
-curl http://127.0.0.1:8080/chain/info
-
-# Your balance
-curl http://127.0.0.1:8080/balance/YOUR_ADDRESS
-```
-
-## Network Details
+## Network Info
 
 | | |
 |---|---|
-| **Chain ID** | 3 (Smoke Test) |
-| **Genesis Message** | Neo_HIT: Follow The White Rabbit |
-| **Initial Supply** | 500 NEO (fair launch) |
+| **Chain ID** | 3 |
+| **Genesis** | Neo_HIT: Follow The White Rabbit |
+| **Supply** | 500 NEO (fair launch) |
 | **Block Reward** | 50 NEO |
 | **Halving** | Every 100 blocks |
-| **P2P Port** | 9090 |
-| **API Port** | 8080 |
 
-## Getting Peer Addresses
-
-Join our community to get active peer addresses:
-- **Discord**: [Join here](#)
-- **Twitter**: [@NeoCoin](#)
-- **GitHub Discussions**: [Ask for peers](https://github.com/Neo4717/NeoCoin/discussions)
-
-## Building from Source
-
-```bash
-# Requirements
-- Go 1.21+
-- Docker (optional)
-
-# Build binary
-cd blockchain
-go build -o neocoin .
-
-# Or use Docker
-docker compose -f docker-compose.public.yml up -d
-```
+---
 
 ## Community
 
-- Discord: [Join our server](#)
-- Twitter: [@NeoCoin](#)
-- Issues: [GitHub Issues](https://github.com/Neo4717/NeoCoin/issues)
-
-## License
-
-MIT - Open source, forever.
+- **Discord**: [Join](#)
+- **Twitter**: [@NeoCoin](#)
+- **GitHub**: [Discussions](https://github.com/Neo4717/NeoCoin/discussions)
 
 ---
 
