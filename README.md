@@ -1,6 +1,6 @@
 # NeoCoin (NEO) - Follow The White Rabbit
 
-> **"Follow The White Rabbit - Neo_HIT"**
+> **"Neo_HIT: Follow The White Rabbit"**
 > 
 > Genesis Block Message
 
@@ -11,7 +11,7 @@ A community-driven Proof-of-Work blockchain. Fair launch, no premine, built for 
 - **Fair Launch** - Everyone mines together, no pre-mined coins
 - **Simple** - Clean PoW consensus, no complex mechanics
 - **Your Chain** - Community owned, community run
-- **Built for AI Agents** - Optional AI policy layer for smart transactions
+- **AI Security** - Deterministic AI policy engine for fraud detection
 
 ## Quick Start
 
@@ -68,7 +68,7 @@ curl http://127.0.0.1:8080/balance/YOUR_ADDRESS
 | | |
 |---|---|
 | **Chain ID** | 3 (Smoke Test) |
-| **Genesis Message** | Follow The White Rabbit - Neo_HIT |
+| **Genesis Message** | Neo_HIT: Follow The White Rabbit |
 | **Initial Supply** | 500 NEO (fair launch) |
 | **Block Reward** | 50 NEO |
 | **Halving** | Every 100 blocks |
