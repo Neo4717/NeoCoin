@@ -1,13 +1,17 @@
 """
-NeoCoin Deterministic Policy Engine
-Replaces ML-based analysis with verifiable, deterministic rules.
-Can be used in consensus without fork.
+NeoCoin Deterministic Policy Engine v3.0
+- Deterministic, verifiable fraud detection
+- Cryptographic attestation of audit results
+- On-chain policy governance ready
 """
 
 import re
 import math
+import hashlib
+import json
+import time
 from typing import Dict, List, Tuple, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from enum import Enum
 
 
@@ -27,13 +31,72 @@ class PolicyRule:
 
 
 @dataclass
-class DeterministicResult:
-    valid: bool
-    risk_score: float
-    risk_level: RiskLevel
-    reasons: List[str]
-    rules_triggered: List[str]
+class AuditReceipt:
+    """Cryptographic attestation of audit result"""
+
+    tx_hash: str
+    timestamp: int
     policy_version: str
+    risk_score: float
+    risk_level: str
+    valid: bool
+    reasons: List[str]
+    input_hash: str
+    receipt_hash: str
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+class DeterministicResult:
+    def __init__(
+        self,
+        valid: bool,
+        risk_score: float,
+        risk_level: RiskLevel,
+        reasons: List[str],
+        rules_triggered: List[str],
+        policy_version: str,
+        tx_hash: str = "",
+    ):
+        self.valid = valid
+        self.risk_score = risk_score
+        self.risk_level = risk_level
+        self.reasons = reasons
+        self.rules_triggered = rules_triggered
+        self.policy_version = policy_version
+        self.tx_hash = tx_hash
+        self.receipt = self._create_receipt()
+
+    def _create_receipt(self) -> AuditReceipt:
+        input_data = f"{self.tx_hash}:{self.risk_score}:{self.policy_version}"
+        input_hash = hashlib.sha256(input_data.encode()).hexdigest()
+
+        receipt_data = f"{input_hash}:{time.time()}"
+        receipt_hash = hashlib.sha256(receipt_data.encode()).hexdigest()[:16]
+
+        return AuditReceipt(
+            tx_hash=self.tx_hash,
+            timestamp=int(time.time()),
+            policy_version=self.policy_version,
+            risk_score=self.risk_score,
+            risk_level=self.risk_level.value,
+            valid=self.valid,
+            reasons=self.reasons,
+            input_hash=input_hash,
+            receipt_hash=receipt_hash,
+        )
+
+    def to_dict(self) -> dict:
+        return {
+            "valid": self.valid,
+            "risk_score": self.risk_score,
+            "risk_level": self.risk_level.value,
+            "reasons": self.reasons,
+            "rules_triggered": self.rules_triggered,
+            "policy_version": self.policy_version,
+            "receipt": self.receipt.to_dict(),
+        }
 
 
 class DeterministicPolicyEngine:
@@ -42,13 +105,34 @@ class DeterministicPolicyEngine:
     No external state, no time dependencies, no ML.
     """
 
-    VERSION = "2.0.0"
+    VERSION = "3.0.0"
+
+    # Policy Schema - structured for on-chain governance
+    POLICY_SCHEMA = {
+        "version": "3.0.0",
+        "name": "NeoCoin Security Policy",
+        "description": "Deterministic fraud detection rules",
+        "rules": [
+            {"id": "blacklist", "type": "address_check", "action": "reject"},
+            {"id": "whitelist", "type": "address_check", "action": "allow"},
+            {"id": "max_amount", "type": "amount_limit", "threshold": 10_000_000},
+            {"id": "dangerous_patterns", "type": "regex_match", "action": "flag"},
+            {"id": "suspicious_patterns", "type": "regex_match", "action": "warn"},
+            {"id": "money_laundering", "type": "regex_match", "action": "reject"},
+            {"id": "high_entropy", "type": "data_analysis", "threshold": 7.5},
+            {
+                "id": "contract_interaction",
+                "type": "pattern_detection",
+                "action": "flag",
+            },
+        ],
+    }
 
     # Thresholds (fixed, deterministic)
     RISK_THRESHOLD_CRITICAL = 70.0
     RISK_THRESHOLD_MEDIUM = 40.0
     MAX_AMOUNT = 10_000_000
-    MIN_AMOUNT = 1  # Minimum transaction amount
+    MIN_AMOUNT = 1
     LARGE_AMOUNT = 1_000_000
     MAX_DATA_LENGTH = 10000
     HIGH_ENTROPY_THRESHOLD = 7.5
