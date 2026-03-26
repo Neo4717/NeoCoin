@@ -293,12 +293,16 @@ func (bc *Blockchain) MineTransfers(transfers []Transaction) (*Block, error) {
 	policy := bc.consensus.MonetaryPolicy
 	reward := policy.BlockReward(height)
 	minerFees := policy.MinerFeeAmount(fees)
+	coinbaseData := fmt.Sprintf("block reward + fees (height=%d)", height)
+	if height == 1 {
+		coinbaseData = "Memphis"
+	}
 	coinbase := Transaction{
 		Type:      TxCoinbase,
 		ChainID:   bc.ChainID,
 		ToAddress: bc.MinerAddress,
 		Amount:    reward + minerFees,
-		Data:      fmt.Sprintf("block reward + fees (height=%d)", height),
+		Data:      coinbaseData,
 	}
 
 	txs := make([]Transaction, 0, 1+len(transfers))

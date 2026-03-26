@@ -23,6 +23,9 @@ func (p MonetaryPolicy) BlockReward(height uint64) uint64 {
 		return p.TailEmission
 	}
 	reward := p.InitialBlockReward >> halvings
+	if reward == 0 && p.TailEmission == 0 {
+		return 1
+	}
 	if reward == 0 {
 		return p.TailEmission
 	}
