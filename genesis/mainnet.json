@@ -1,0 +1,30 @@
+{
+  "network": "neocoin-mainnet",
+  "chainId": 1,
+  "timestamp": 1742252800,
+  "genesisMinerAddress": "86bee3656b5603ba15a429e34444cd1cf351ca8e5462516fbead1d862b2ee4f9",
+  "initialSupply": "2100000000000000",
+  "genesisMessage": "NeoCoin Mainnet Launch - A new era of decentralized finance",
+  "monetaryPolicy": {
+    "initialBlockReward": "5000000000",
+    "halvingInterval": 210000,
+    "minerFeeShare": 100,
+    "tailEmission": "0"
+  },
+  "consensusParams": {
+    "difficultyEnable": true,
+    "difficultyTargetMs": 60000,
+    "difficultyWindow": 100,
+    "difficultyMaxStepBits": 4,
+    "difficultyMinBits": 16,
+    "difficultyMaxBits": 32,
+    "genesisDifficultyBits": 20,
+    "medianTimePastWindow": 11,
+    "maxTimeDrift": 7200,
+    "maxBlockSize": 2000000,
+    "merkleEnable": true,
+    "merkleActivationHeight": 0,
+    "binaryEncodingEnable": true,
+    "binaryEncodingActivationHeight": 0
+  }
+}

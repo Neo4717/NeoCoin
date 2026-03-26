@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  neocoin:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+    environment:
+      - CHAIN_ID=1
+      - GENESIS_PATH=/genesis/mainnet.json
+      - P2P_ENABLE=true
+      - NODE_PORT=8080
+      - P2P_PORT=9090
+      - LOG_LEVEL=info
+      - METRICS_ENABLED=true
+    volumes:
+      - ./genesis/mainnet.json:/genesis/mainnet.json:ro
+      - neocoin_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/chain/info"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - "neocoin.autoupdate=enabled"
+
+  updater:
+    image: alpine:latest
+    command: >
+      sh -c "apk add --no-cache curl git bash go &&
+             cd /app &&
+             curl -sL https://raw.githubusercontent.com/Neo4717/NeoCoin/main/scripts/safe-updater.sh -o safe-updater.sh &&
+             chmod +x safe-updater.sh &&
+             ./safe-updater.sh run"
+    environment:
+      - AUTO_UPDATE=true
+      - TEST_BEFORE_UPDATE=true
+      - CHECK_INTERVAL=7200
+      - KEEP_BACKUPS=3
+      - LOG_FILE=/var/log/neocoin-updater.log
+    volumes:
+      - ./:/app
+      - neocoin_data:/data:ro
+    restart: unless-stopped
+    depends_on:
+      - neocoin
+    labels:
+      - "neocoin.updater=enabled"
+
+volumes:
+  neocoin_data:

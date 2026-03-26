@@ -1,0 +1,30 @@
+{
+  "network": "neocoin-smoke",
+  "chainId": 3,
+  "timestamp": 1700000000,
+  "genesisMinerAddress": "NEO0049c3cf477a9fce2622d18245d04f011f788f7b2e248bdeb38d4ef459c37857be3d0293c3",
+  "initialSupply": "10",
+  "genesisMessage": "Follow The White Rabbit - Neo_HIT",
+  "monetaryPolicy": {
+    "initialBlockReward": "50",
+    "halvingInterval": 100,
+    "minerFeeShare": 100,
+    "tailEmission": "0"
+  },
+  "consensusParams": {
+    "difficultyEnable": false,
+    "difficultyTargetMs": 1000,
+    "difficultyWindow": 10,
+    "difficultyMaxStepBits": 1,
+    "difficultyMinBits": 1,
+    "difficultyMaxBits": 255,
+    "genesisDifficultyBits": 1,
+    "medianTimePastWindow": 11,
+    "maxTimeDrift": 7200,
+    "maxBlockSize": 1000000,
+    "merkleEnable": false,
+    "merkleActivationHeight": 0,
+    "binaryEncodingEnable": false,
+    "binaryEncodingActivationHeight": 0
+  }
+}

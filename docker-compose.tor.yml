@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  tor:
+    image: pauloo27/tor-hidden-service
+    environment:
+      - TOR_SERVICE_HOSTS=80:neocoin:8080
+    volumes:
+      - tor_keys:/var/lib/tor
+    restart: unless-stopped
+
+volumes:
+  tor_keys:

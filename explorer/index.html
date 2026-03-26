@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeoCoin - Decentralized Blockchain</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            min-height: 100vh;
+        }
+        .container { max-width: 900px; margin: 0 auto; padding: 40px 20px; }
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        h1 {
+            font-size: 3rem;
+            background: linear-gradient(90deg, #00d4ff, #7b2ff7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+        .tagline { font-size: 1.2rem; color: #888; margin-bottom: 20px; }
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin: 30px 0;
+        }
+        .stat { text-align: center; }
+        .stat-value { font-size: 2rem; font-weight: bold; color: #00d4ff; }
+        .stat-label { font-size: 0.9rem; color: #666; }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 40px 0;
+        }
+        .feature {
+            background: rgba(255,255,255,0.05);
+            padding: 25px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .feature h3 { color: #00d4ff; margin-bottom: 10px; }
+        .feature p { color: #aaa; font-size: 0.9rem; line-height: 1.6; }
+        
+        .cta {
+            text-align: center;
+            margin: 50px 0;
+        }
+        .btn {
+            display: inline-block;
+            padding: 15px 40px;
+            background: linear-gradient(90deg, #00d4ff, #7b2ff7);
+            color: #fff;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            margin: 10px;
+            transition: transform 0.2s;
+        }
+        .btn:hover { transform: scale(1.05); }
+        
+        .code-block {
+            background: #0d0d0d;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .code-block code { color: #00d4ff; }
+        
+        footer {
+            text-align: center;
+            color: #444;
+            padding: 40px 0;
+            font-size: 0.8rem;
+        }
+        
+        .onion-badge {
+            background: #7b2ff7;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            display: inline-block;
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>NeoCoin</h1>
+            <p class="tagline">Open-Source Proof-of-Work Blockchain</p>
+            
+            <div class="onion-badge">🌐 Onion Address Available</div>
+            
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-value" id="height">Loading...</div>
+                    <div class="stat-label">Block Height</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="difficulty">Loading...</div>
+                    <div class="stat-label">Difficulty</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="peers">0</div>
+                    <div class="stat-label">Connected Peers</div>
+                </div>
+            </div>
+        </header>
+        
+        <section>
+            <h2>What is NeoCoin?</h2>
+            <p>NeoCoin is a decentralized cryptocurrency with AI-powered security features. Built in Go with focus on security and usability.</p>
+            
+            <div class="features">
+                <div class="feature">
+                    <h3>⚡ Fast Transactions</h3>
+                    <p>10-second block times with Ed25519 signatures for quick, secure transactions.</p>
+                </div>
+                <div class="feature">
+                    <h3>🛡️ AI Security</h3>
+                    <p>Optional AI auditor detects suspicious transactions before mining.</p>
+                </div>
+                <div class="feature">
+                    <h3>🔒 Privacy</h3>
+                    <p>Tor onion address available. Stay anonymous while running a node.</p>
+                </div>
+                <div class="feature">
+                    <h3>💻 Open Source</h3>
+                    <p>100% transparent. Verify the code yourself. No premine, no hidden dev allocation.</p>
+                </div>
+            </div>
+        </section>
+        
+        <section>
+            <h2>Run a Node</h2>
+            <p>Join the network and help make NeoCoin more decentralized:</p>
+            
+            <div class="code-block">
+                <code>
+# Quick start with Docker
+git clone https://github.com/Neo4717/NeoCoin.git
+cd NeoCoin
+docker-compose up -d
+
+# Check status
+curl http://localhost:8080/chain/info
+                </code>
+            </div>
+            
+            <div class="cta">
+                <a href="https://github.com/Neo4717/NeoCoin" class="btn" target="_blank">View on GitHub</a>
+                <a href="/explorer/" class="btn">Block Explorer</a>
+                <a href="/wallet/" class="btn">Web Wallet</a>
+            </div>
+        </section>
+        
+        <section>
+            <h2>Tokenomics</h2>
+            <table style="width:100%; max-width:500px; margin: 20px auto; text-align:left;">
+                <tr><td style="padding:10px;">Maximum Supply</td><td style="color:#00d4ff;">21,000,000 NEO</td></tr>
+                <tr><td style="padding:10px;">Block Reward</td><td style="color:#00d4ff;">50 NEO</td></tr>
+                <tr><td style="padding:10px;">Halving</td><td style="color:#00d4ff;">Every 210,000 blocks (~4 years)</td></tr>
+                <tr><td style="padding:10px;">Consensus</td><td style="color:#00d4ff;">Proof-of-Work</td></tr>
+            </table>
+        </section>
+        
+        <footer>
+            <p>NeoCoin v1.0 - Built with Go</p>
+            <p>License: MIT</p>
+            <p>Your node, your rules.</p>
+        </footer>
+    </div>
+    
+    <script>
+        // Fetch chain info
+        fetch('/chain/info')
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('height').textContent = data.height || '0';
+                document.getElementById('difficulty').textContent = data.difficultyBits || '1';
+                document.getElementById('peers').textContent = data.peersCount || '0';
+            })
+            .catch(() => {
+                document.getElementById('height').textContent = 'Offline';
+            });
+    </script>
+</body>
+</html>

@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>NeoCoin Wallet</title>
+  <style>
+    :root {
+      --bg: #0b0f1a;
+      --panel: #121a2a;
+      --text: #e7edf7;
+      --muted: #9fb0c7;
+      --accent: #62d0ff;
+      --danger: #ff6b6b;
+      --ok: #46e6a5;
+      --warning: #ffc107;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+    }
+    header {
+      padding: 20px;
+      background: linear-gradient(180deg, rgba(98, 208, 255, 0.08), transparent);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    h1 { font-size: 24px; letter-spacing: 0.5px; }
+    .tag {
+      background: var(--accent);
+      color: var(--bg);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    main {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    h2 {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+    input, textarea {
+      width: 100%;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      padding: 12px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 14px;
+    }
+    input:focus, textarea:focus { outline: none; border-color: var(--accent); }
+    textarea { min-height: 80px; resize: vertical; }
+    button {
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      border-radius: 8px;
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    button:hover { opacity: 0.9; }
+    button.secondary {
+      background: transparent;
+      border: 1px solid var(--accent);
+      color: var(--accent);
+    }
+    button.danger { background: var(--danger); color: white; }
+    .row { display: flex; gap: 12px; }
+    .row > * { flex: 1; }
+    .alert {
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+    .alert.error { background: rgba(255,107,107,0.15); color: var(--danger); border: 1px solid var(--danger); }
+    .alert.success { background: rgba(70,230,165,0.15); color: var(--ok); border: 1px solid var(--ok); }
+    .alert.warning { background: rgba(255,193,7,0.15); color: var(--warning); border: 1px solid var(--warning); }
+    .balance {
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .address {
+      font-family: var(--mono);
+      font-size: 12px;
+      word-break: break-all;
+      background: rgba(255,255,255,0.04);
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 8px;
+    }
+    .hidden { display: none; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+    .tab {
+      padding: 10px 20px;
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.12);
+      color: var(--muted);
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .tab.active {
+      background: var(--accent);
+      color: var(--bg);
+      border-color: var(--accent);
+    }
+    footer {
+      text-align: center;
+      padding: 20px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: rgba(255,255,255,0.04);
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 13px;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--ok);
+      display: inline-block;
+      margin-right: 8px;
+    }
+    .status-dot.error { background: var(--danger); }
+    #nodeStatus { display: flex; align-items: center; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>NeoCoin <span style="color: var(--accent)">Wallet</span></h1>
+    <span class="tag">MAINNET</span>
+  </header>
+
+  <main>
+    <div class="status-bar">
+      <div id="nodeStatus"><span class="status-dot"></span>Connecting...</div>
+      <div id="chainHeight">Height: -</div>
+    </div>
+
+    <div id="welcomeCard" class="card">
+      <h2>Welcome to NeoCoin</h2>
+      <p style="color: var(--muted); margin-bottom: 20px;">
+        NeoCoin is a Proof-of-Work cryptocurrency. Create a new wallet or import an existing private key to get started.
+      </p>
+      <div class="row">
+        <button onclick="showCreateWallet()">Create New Wallet</button>
+        <button class="secondary" onclick="showImportWallet()">Import Wallet</button>
+      </div>
+    </div>
+
+    <div id="createCard" class="card hidden">
+      <h2>Create New Wallet</h2>
+      <div id="newWalletResult" class="hidden">
+        <div class="alert success">
+          <strong>Wallet Created!</strong> Save your private key securely - it cannot be recovered if lost.
+        </div>
+        <div class="form-group">
+          <label>NeoCoin Address</label>
+          <div id="newAddress" class="address"></div>
+        </div>
+        <div class="form-group">
+          <label>Private Key (Base64)</label>
+          <div id="newPrivateKey" class="address"></div>
+        </div>
+        <button onclick="useWallet()">Use This Wallet</button>
+      </div>
+      <div id="createLoading">
+        <button onclick="createWallet()">Generate Wallet</button>
+      </div>
+    </div>
+
+    <div id="importCard" class="card hidden">
+      <h2>Import Wallet</h2>
+      <div class="form-group">
+        <label>Private Key (Base64)</label>
+        <input type="password" id="importPrivateKey" placeholder="Enter your private key...">
+      </div>
+      <button onclick="importWallet()">Import</button>
+    </div>
+
+    <div id="walletCard" class="card hidden">
+      <h2>Your Balance</h2>
+      <div class="balance"><span id="balanceAmount">0</span> NEO</div>
+      <div class="address" id="walletAddress"></div>
+      <button class="secondary" onclick="refreshBalance()" style="margin-top: 12px;">Refresh</button>
+    </div>
+
+    <div id="sendCard" class="card hidden">
+      <h2>Send NEO</h2>
+      <div class="tabs">
+        <button class="tab active" onclick="showTab('send')">Send</button>
+        <button class="tab" onclick="showTab('history')">History</button>
+      </div>
+      
+      <div id="sendTab">
+        <div id="sendError" class="alert error hidden"></div>
+        <div id="sendSuccess" class="alert success hidden"></div>
+        <div class="form-group">
+          <label>Recipient Address (64 char hex)</label>
+          <input type="text" id="toAddress" placeholder="e.g., a1b2c3d4...">
+        </div>
+        <div class="row">
+          <div class="form-group">
+            <label>Amount (NEO)</label>
+            <input type="number" id="sendAmount" placeholder="0" min="1">
+          </div>
+          <div class="form-group">
+            <label>Fee (NEO)</label>
+            <input type="number" id="sendFee" value="1" min="1">
+          </div>
+        </div>
+        <button onclick="sendTransaction()">Send NEO</button>
+      </div>
+
+      <div id="historyTab" class="hidden">
+        <p style="color: var(--muted); font-size: 13px;">Transaction history will appear here.</p>
+        <div id="txHistory" style="margin-top: 12px;"></div>
+      </div>
+    </div>
+
+    <div id="noWalletCard" class="card hidden">
+      <div class="alert warning">
+        <strong>No wallet loaded.</strong> Create or import a wallet to send transactions.
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>NeoCoin v1.0 - Proof-of-Work Blockchain</p>
+    <p style="margin-top: 8px; color: var(--muted);">⚠️ This is experimental software. Use at your own risk.</p>
+  </footer>
+
+  <script>
+    const API = '';
+    let currentWallet = null;
+    let chainInfo = null;
+
+    function el(id) { return document.getElementById(id); }
+
+    async function api(path, opts = {}) {
+      const resp = await fetch(API + path, {
+        ...opts,
+        headers: { 'Content-Type': 'application/json', ...opts.headers }
+      });
+      const text = await resp.text();
+      try {
+        return { ok: resp.ok, data: JSON.parse(text), text };
+      } catch {
+        return { ok: resp.ok, data: null, text };
+      }
+    }
+
+    async function checkNode() {
+      const res = await api('/chain/info');
+      if (res.ok) {
+        chainInfo = res.data;
+        el('nodeStatus').innerHTML = '<span class="status-dot"></span>Connected';
+        el('chainHeight').textContent = 'Height: ' + res.data.height;
+      } else {
+        el('nodeStatus').innerHTML = '<span class="status-dot error"></span>Disconnected';
+      }
+    }
+
+    async function createWallet() {
+      el('createLoading').innerHTML = '<p style="color: var(--muted)">Generating...</p>';
+      const res = await api('/wallet/create', { method: 'POST' });
+      if (res.ok) {
+        currentWallet = res.data;
+        el('newAddress').textContent = res.data.address;
+        el('newPrivateKey').textContent = res.data.privateKey;
+        el('newWalletResult').classList.remove('hidden');
+        el('createLoading').classList.add('hidden');
+        showWallet();
+      } else {
+        alert('Failed to create wallet: ' + res.text);
+      }
+    }
+
+    async function importWallet() {
+      const privKey = el('importPrivateKey').value.trim();
+      if (!privKey) {
+        alert('Please enter a private key');
+        return;
+      }
+      // Just validate by attempting to use - the API will verify
+      currentWallet = { privateKey: privKey, address: '' };
+      el('importCard').classList.add('hidden');
+      showWallet();
+    }
+
+    async function showWallet() {
+      el('welcomeCard').classList.add('hidden');
+      el('createCard').classList.add('hidden');
+      el('importCard').classList.add('hidden');
+      el('walletCard').classList.remove('hidden');
+      el('sendCard').classList.remove('hidden');
+      
+      // Derive address from private key via sign request (will fail but gives us address)
+      const testTx = {
+        privateKey: currentWallet.privateKey,
+        toAddress: '0000000000000000000000000000000000000000000000000000000000000000',
+        amount: 1,
+        fee: 1,
+        nonce: 1
+      };
+      const res = await api('/wallet/sign', {
+        method: 'POST',
+        body: JSON.stringify(testTx)
+      });
+      if (res.ok && res.data.from) {
+        currentWallet.address = res.data.from;
+        el('walletAddress').textContent = res.data.address || res.data.from;
+      } else {
+        el('walletAddress').textContent = '(imported wallet)';
+      }
+      
+      await refreshBalance();
+    }
+
+    async function refreshBalance() {
+      if (!currentWallet || !currentWallet.address) return;
+      
+      const res = await api('/balance/' + currentWallet.address);
+      if (res.ok) {
+        el('balanceAmount').textContent = res.data.balance.toLocaleString();
+      } else {
+        el('balanceAmount').textContent = '0';
+      }
+    }
+
+    async function sendTransaction() {
+      const to = el('toAddress').value.trim();
+      const amount = parseInt(el('sendAmount').value);
+      const fee = parseInt(el('sendFee').value) || 1;
+      
+      el('sendError').classList.add('hidden');
+      el('sendSuccess').classList.add('hidden');
+      
+      if (!to || to.length !== 64) {
+        el('sendError').textContent = 'Invalid recipient address (must be 64 hex chars)';
+        el('sendError').classList.remove('hidden');
+        return;
+      }
+      if (!amount || amount < 1) {
+        el('sendError').textContent = 'Invalid amount';
+        el('sendError').classList.remove('hidden');
+        return;
+      }
+
+      // First sign the transaction
+      const signRes = await api('/wallet/sign', {
+        method: 'POST',
+        body: JSON.stringify({
+          privateKey: currentWallet.privateKey,
+          toAddress: to,
+          amount: amount,
+          fee: fee,
+          nonce: 0 // auto
+        })
+      });
+
+      if (!signRes.ok) {
+        el('sendError').textContent = 'Failed to sign: ' + signRes.text;
+        el('sendError').classList.remove('hidden');
+        return;
+      }
+
+      // Then submit
+      const submitRes = await api('/tx', {
+        method: 'POST',
+        body: signRes.data.txJson
+      });
+
+      if (submitRes.ok) {
+        el('sendSuccess').textContent = 'Transaction submitted! TXID: ' + submitRes.data.txId;
+        el('sendSuccess').classList.remove('hidden');
+        el('toAddress').value = '';
+        el('sendAmount').value = '';
+        await refreshBalance();
+      } else {
+        el('sendError').textContent = 'Failed to submit: ' + submitRes.text;
+        el('sendError').classList.remove('hidden');
+      }
+    }
+
+    function showTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+      if (tab === 'send') {
+        el('sendTab').classList.remove('hidden');
+        el('historyTab').classList.add('hidden');
+      } else {
+        el('sendTab').classList.add('hidden');
+        el('historyTab').classList.remove('hidden');
+      }
+    }
+
+    function showCreateWallet() {
+      el('welcomeCard').classList.add('hidden');
+      el('createCard').classList.remove('hidden');
+    }
+
+    function showImportWallet() {
+      el('welcomeCard').classList.add('hidden');
+      el('importCard').classList.remove('hidden');
+    }
+
+    function useWallet() {
+      localStorage.setItem('neocoin_wallet', JSON.stringify(currentWallet));
+      showWallet();
+    }
+
+    // Load saved wallet on startup
+    (function init() {
+      checkNode();
+      setInterval(checkNode, 10000);
+      
+      const saved = localStorage.getItem('neocoin_wallet');
+      if (saved) {
+        try {
+          currentWallet = JSON.parse(saved);
+          showWallet();
+        } catch {}
+      }
+    })();
+  </script>
+</body>
+</html>

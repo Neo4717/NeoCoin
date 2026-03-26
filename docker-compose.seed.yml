@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  neocoin:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+    environment:
+      - CHAIN_ID=1
+      - GENESIS_PATH=/genesis/mainnet.json
+      - P2P_ENABLE=true
+      - P2P_SEEDS=${P2P_SEEDS:-}
+      - NODE_PORT=8080
+      - P2P_PORT=9090
+      - LOG_LEVEL=info
+      - METRICS_ENABLED=true
+      - ADMIN_TOKEN=${ADMIN_TOKEN:-}
+    volumes:
+      - ./genesis/mainnet.json:/genesis/mainnet.json:ro
+      - neocoin_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/chain/info"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  neocoin_data:

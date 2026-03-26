@@ -1,0 +1,64 @@
+services:
+  blockchain:
+    build:
+      context: ./blockchain
+      dockerfile: Dockerfile.reproducible
+    command: ["./blockchain", "server"]
+    container_name: neocoin-mainnet
+    ports:
+      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:9090:9090"
+    environment:
+      - CHAIN_ID=1
+      - GENESIS_PATH=genesis/mainnet.json
+      - HTTP_ADDR=0.0.0.0:8080
+      - P2P_LISTEN_ADDR=0.0.0.0:9090
+      - P2P_ENABLE=true
+      - ADMIN_TOKEN=${ADMIN_TOKEN}
+      - MINER_ADDRESS=${MINER_ADDRESS}
+      - AUTO_MINE=${AUTO_MINE:-false}
+      - RATE_LIMIT_REQUESTS=100
+      - RATE_LIMIT_BURST=200
+      - IGNORE_RULES_HASH_CHECK=true
+    volumes:
+      - ./genesis:/app/genesis:ro
+      - neocoin_mainnet_data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    labels:
+      - "neocoin.network=mainnet"
+      - "neocoin.version=1.2"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  edge-proxy:
+    image: caddy:2-alpine
+    container_name: neocoin-edge
+    depends_on:
+      blockchain:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "9090:9090"
+    volumes:
+      - ./edge/Caddyfile:/etc/caddy/Caddyfile:ro
+      - neocoin_caddy_data:/data
+      - neocoin_caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  neocoin_mainnet_data:
+  neocoin_caddy_data:
+  neocoin_caddy_config:
+
+networks:
+  default:
+    name: neocoin-mainnet

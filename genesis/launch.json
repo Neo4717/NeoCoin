@@ -1,0 +1,30 @@
+{
+  "network": "neocoin-mainnet",
+  "chainId": 1,
+  "timestamp": 1743024000,
+  "genesisMinerAddress": "49c3cf477a9fce2622d18245d04f011f788f7b2e248bdeb38d4ef459c37857be",
+  "initialSupply": "2100000000000000",
+  "genesisMessage": "Follow The White Rabbit - Neo_HIT",
+  "monetaryPolicy": {
+    "initialBlockReward": "5000000000",
+    "halvingInterval": 210000,
+    "minerFeeShare": 100,
+    "tailEmission": "0"
+  },
+  "consensusParams": {
+    "difficultyEnable": true,
+    "difficultyTargetMs": 60000,
+    "difficultyWindow": 100,
+    "difficultyMaxStepBits": 4,
+    "difficultyMinBits": 16,
+    "difficultyMaxBits": 32,
+    "genesisDifficultyBits": 20,
+    "medianTimePastWindow": 11,
+    "maxTimeDrift": 7200,
+    "maxBlockSize": 2000000,
+    "merkleEnable": true,
+    "merkleActivationHeight": 0,
+    "binaryEncodingEnable": true,
+    "binaryEncodingActivationHeight": 0
+  }
+}

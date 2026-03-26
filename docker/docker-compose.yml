@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  neocoin-node:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    env_file:
+      - ../.env
+    ports:
+      - "8080:8080"
+      - "3030:3030"
+    volumes:
+      - ../data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/chain/info"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
