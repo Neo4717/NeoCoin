@@ -57,9 +57,9 @@ echo ""
 echo "🚀 Starting your node..."
 echo ""
 
-# Run node
+# Run node (MINE_FORCE_EMPTY_BLOCKS=true to start mining quickly)
 cd blockchain
-eval "MINER_ADDRESS=$ADDRESS GENESIS_PATH=../genesis/smoke.json CHAIN_ID=3 P2P_ENABLE=true AUTO_MINE=true ADMIN_TOKEN=test $PEER_CMD ./neocoin server"
+eval "MINER_ADDRESS=$ADDRESS GENESIS_PATH=../genesis/smoke.json CHAIN_ID=3 P2P_ENABLE=true AUTO_MINE=true MINE_FORCE_EMPTY_BLOCKS=true ADMIN_TOKEN=test $PEER_CMD ./neocoin server"
 
 echo ""
 echo "📊 Your node is running!"
