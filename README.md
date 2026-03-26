@@ -69,7 +69,7 @@ curl http://127.0.0.1:8080/balance/YOUR_ADDRESS
 |---|---|
 | **Chain ID** | 3 (Smoke Test) |
 | **Genesis Message** | Follow The White Rabbit - Neo_HIT |
-| **Initial Supply** | 10 NEO (fair launch) |
+| **Initial Supply** | 500 NEO (fair launch) |
 | **Block Reward** | 50 NEO |
 | **Halving** | Every 100 blocks |
 | **P2P Port** | 9090 |
