@@ -20,6 +20,17 @@ Your node will start automatically and begin mining.
 
 ---
 
+## Easy Start (With Tor - Permanent Onion Address)
+
+```bash
+# Just run this script - never deletes anything!
+./start-node.sh
+```
+
+Your node will start and keep the **same onion address forever**!
+
+---
+
 ## Manual Setup
 
 ### 1. Clone & Build
