@@ -1,12 +1,25 @@
 services:
   tor:
-    build:
-      context: ./docker/tor
-      dockerfile: Dockerfile
+    image: alpine:latest
+    container_name: neocoin-tor
     volumes:
-      - tor_keys:/var/lib/tor/hidden_service
+      - tor_data:/var/lib/tor
+      - tor_log:/var/log/tor
+    command: >
+      sh -c "apk add --no-cache tor &&
+             mkdir -p /var/lib/tor/hidden_service /var/log/tor &&
+             chmod 700 /var/lib/tor/hidden_service /var/log/tor &&
+             echo 'SocksPort 0' > /etc/tor/torrc &&
+             echo 'Log notice file /var/log/tor/notices.log' >> /etc/tor/torrc &&
+             echo 'HiddenServiceDir /var/lib/tor/hidden_service' >> /etc/tor/torrc &&
+             echo 'HiddenServicePort 80 neocoin-node:8080' >> /etc/tor/torrc &&
+             echo 'HiddenServicePort 9090 neocoin-node:9090' >> /etc/tor/torrc &&
+             echo 'HiddenServiceVersion 3' >> /etc/tor/torrc &&
+             echo 'ExitPolicy reject *:*' >> /etc/tor/torrc &&
+             tor"
     restart: unless-stopped
-    network_mode: bridge
+    networks:
+      - neocoin_net
     depends_on:
       - neocoin
 
@@ -14,18 +27,29 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile
+    container_name: neocoin-node
     ports:
-      - "127.0.0.1:8080:8080"
-      - "127.0.0.1:9090:9090"
+      - "8080:8080"
+      - "9090:9090"
     volumes:
-      - ${DATA_DIR:-./data}:/app/data
+      - ./data:/app/data
       - ./genesis:/app/genesis:ro
     environment:
-      - P2P_LISTEN_ADDR=0.0.0.0:9090
-      - P2P_ENABLE=true
-      - HTTP_ADDR=0.0.0.0:8080
-      - LOG_LEVEL=info
+      CHAIN_ID: "3"
+      GENESIS_PATH: "/app/genesis/smoke.json"
+      P2P_LISTEN_ADDR: "0.0.0.0:9090"
+      P2P_ENABLE: "true"
+      HTTP_ADDR: "0.0.0.0:8080"
+      LOG_LEVEL: "info"
+      IGNORE_RULES_HASH_CHECK: "true"
     restart: unless-stopped
+    networks:
+      - neocoin_net
+
+networks:
+  neocoin_net:
+    driver: bridge
 
 volumes:
-  tor_keys:
+  tor_data:
+  tor_log:
