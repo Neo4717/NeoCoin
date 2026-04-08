@@ -162,13 +162,20 @@ func LoadGenesisConfig(path string) (*GenesisConfig, error) {
 		Network:             raw.Network,
 		ChainID:             raw.ChainID,
 		Timestamp:           raw.Timestamp,
-		GenesisMinerAddress: raw.GenesisMinerAddress,
+		GenesisMinerAddress: normalizeGenesisAddress(raw.GenesisMinerAddress),
 		InitialSupply:       raw.InitialSupply.Uint64(),
 		GenesisMessage:      raw.GenesisMessage,
 		MonetaryPolicy:      policy,
 		ConsensusParams:     consensus,
 	}
 	return cfg, nil
+}
+
+func normalizeGenesisAddress(addr string) string {
+	if strings.HasPrefix(addr, AddressPrefix) {
+		return addr
+	}
+	return GenerateAddressFromRawHex(addr)
 }
 
 type consensusParamsJSON struct {
@@ -431,10 +438,16 @@ func BuildGenesisBlock(cfg *GenesisConfig, consensus ConsensusParams) (*Block, e
 		return nil, errors.New("missing genesis config")
 	}
 	msg := genesisMessageOrDefault(cfg)
+
+	minerAddr := cfg.GenesisMinerAddress
+	if !strings.HasPrefix(minerAddr, AddressPrefix) {
+		minerAddr = GenerateAddressFromRawHex(minerAddr)
+	}
+
 	coinbase := Transaction{
 		Type:      TxCoinbase,
 		ChainID:   cfg.ChainID,
-		ToAddress: cfg.GenesisMinerAddress,
+		ToAddress: minerAddr,
 		Amount:    cfg.InitialSupply,
 		Data:      msg,
 	}
@@ -443,7 +456,7 @@ func BuildGenesisBlock(cfg *GenesisConfig, consensus ConsensusParams) (*Block, e
 		Height:         0,
 		TimestampUnix:  cfg.Timestamp,
 		DifficultyBits: consensus.GenesisDifficultyBits,
-		MinerAddress:   cfg.GenesisMinerAddress,
+		MinerAddress:   minerAddr,
 		Transactions:   []Transaction{coinbase},
 	}
 	pow := NewProofOfWork(consensus, genesis)

@@ -1,12 +1,30 @@
-version: '3.8'
-
 services:
   tor:
-    image: pauloo27/tor-hidden-service
-    environment:
-      - TOR_SERVICE_HOSTS=80:neocoin:8080
+    build:
+      context: ./docker/tor
+      dockerfile: Dockerfile
     volumes:
-      - tor_keys:/var/lib/tor
+      - tor_keys:/var/lib/tor/hidden_service
+    restart: unless-stopped
+    network_mode: bridge
+    depends_on:
+      - neocoin
+
+  neocoin:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    ports:
+      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ${DATA_DIR:-./data}:/app/data
+      - ./genesis:/app/genesis:ro
+    environment:
+      - P2P_LISTEN_ADDR=0.0.0.0:9090
+      - P2P_ENABLE=true
+      - HTTP_ADDR=0.0.0.0:8080
+      - LOG_LEVEL=info
     restart: unless-stopped
 
 volumes:

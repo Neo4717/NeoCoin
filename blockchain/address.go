@@ -63,6 +63,19 @@ func ValidateAddress(addr string) error {
 	return nil
 }
 
+func GenerateAddressFromRawHex(rawHex string) string {
+	b, err := hex.DecodeString(rawHex)
+	if err != nil || len(b) != 32 {
+		return rawHex
+	}
+	addressData := make([]byte, 1+len(b))
+	addressData[0] = AddressVersion
+	copy(addressData[1:], b)
+	checksum := sha256.Sum256(addressData)
+	addressData = append(addressData, checksum[:ChecksumLen]...)
+	return fmt.Sprintf("%s%s", AddressPrefix, hex.EncodeToString(addressData))
+}
+
 func GetAddressFromPubKey(pubKey []byte) string {
 	return GenerateAddress(pubKey)
 }

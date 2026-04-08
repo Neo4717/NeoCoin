@@ -151,3 +151,39 @@ Peers can be manually specified via:
 ### Address Advertisement
 
 Nodes advertise their address to connected peers, which is propagated through the network.
+
+## Tor Onion Service
+
+NeoCoin can be exposed as a Tor hidden service for anonymous P2P connections.
+
+### Setup with Docker
+
+```bash
+# Start with Tor
+docker-compose -f docker-compose.tor.yml up -d
+
+# Get your .onion address
+./scripts/tor-onion.sh
+```
+
+### Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `P2P_LISTEN_ADDR` | P2P listen address (default `:9090`) |
+| `HTTP_ADDR` | HTTP API address (default `127.0.0.1:8080`) |
+
+### Connecting to Onion Nodes
+
+To connect to another node's .onion address:
+
+```bash
+P2P_PEERS=abcd1234567890.onion:9090 ./neocoin server
+```
+
+### Onion Address Format
+
+- HTTP API: `http://<onion>.onion`
+- P2P: `<onion>.onion:9090`
+
+The Tor hidden service automatically generates a persistent address stored in Docker volume `tor_keys`. Backup this volume to keep your address.

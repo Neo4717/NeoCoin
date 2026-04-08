@@ -4,33 +4,47 @@
 .env.production
 
 ## Blockchain runtime data
-
-## Blockchain runtime data
 blockchain/data/
 blockchain/updates/
 blockchain/*.db
+blockchain/neocoin
+blockchain/neocoin_new
+blockchain/genesis/
 .smoke-data/
 .rbf-data/
-genesis/smoke.json
-genesis/rbf.json
 
 ## n8n runtime data (may contain credentials)
 n8n/data/
 
+## Private Keys / Seeds
+*.key
+*.pem
+*.priv
+seed*
+*wallet.json
+
+## Onion Service Keys
+/tmp/tor-onion-data/
+tor_keys/
+
+## Temp files
+*.tmp
+*.log
+
+## Test credentials
+.env.example
+env.mainnet.example
+genesis/smoke.json
+genesis/rbf.json
+
+## Scripts with temp paths
+scripts/run-tor-local.sh
+scripts/tor-onion.sh
+test-onion.py
+docker/tor/
+
 ## Python
 __pycache__/
 *.pyc
-.venv/
-.env*
-
-# Binaries
-blockchain/blockchain
-blockchain/neocoin
-blockchain/neocoin_test
-neocoin
-node
-cmd/node/node
-
-# Chain data
-data/
-cloudflared
+.env.mainnet
+.env.testnet

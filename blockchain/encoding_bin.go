@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
+	"fmt"
+	"strings"
 )
 
 const (
@@ -27,17 +29,24 @@ func writeULEB128(buf *bytes.Buffer, n uint64) {
 	}
 }
 
-func decodeHex32(addrHex string) ([32]byte, error) {
+func decodeHex32(addr string) ([32]byte, error) {
 	var out [32]byte
-	b, err := hex.DecodeString(addrHex)
+	addr = strings.TrimPrefix(addr, AddressPrefix)
+	b, err := hex.DecodeString(addr)
 	if err != nil {
 		return out, err
 	}
-	if len(b) != 32 {
-		return out, errors.New("expected 32 bytes")
+	// Address format: version(1) + hash(32) + checksum(4) = 37 bytes total
+	// For mining, we need just the 32-byte hash (skip version byte)
+	if len(b) == 37 {
+		copy(out[:], b[1:33])
+		return out, nil
 	}
-	copy(out[:], b)
-	return out, nil
+	if len(b) == 32 {
+		copy(out[:], b)
+		return out, nil
+	}
+	return out, fmt.Errorf("expected 32 or 37 bytes, got %d", len(b))
 }
 
 func txSigningPreimageBinaryV1(tx Transaction) ([]byte, error) {
