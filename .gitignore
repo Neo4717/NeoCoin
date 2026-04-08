@@ -48,3 +48,15 @@ __pycache__/
 *.pyc
 .env.mainnet
 .env.testnet
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+
+
+__pycache__/
+*.pyc
+

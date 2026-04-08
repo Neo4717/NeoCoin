@@ -69,6 +69,50 @@ ADMIN_TOKEN=test \
 
 ---
 
+## Tor Onion Service (Anonymous Node)
+
+Run your node as a Tor hidden service for anonymous P2P connections.
+
+### Setup Tor
+```bash
+# Install Tor (if not installed)
+sudo apt install tor
+
+# Configure Tor hidden service
+cat > /tmp/tor-onionrc << 'EOF'
+SocksPort 9050
+ControlPort 9051
+HiddenServiceDir /tmp/tor-onion-data
+HiddenServicePort 80 127.0.0.1:8080
+HiddenServicePort 443 127.0.0.1:9090
+HiddenServiceVersion 3
+RunAsDaemon 1
+EOF
+
+# Start Tor
+tor -f /tmp/tor-onionrc &
+sleep 15
+```
+
+### Get Your Onion Address
+```bash
+cat /tmp/tor-onion-data/hostname
+```
+
+### Connect to Onion Node
+```bash
+# Replace with actual onion address
+P2P_PEERS=your-onion-address.onion:9090 \
+MINER_ADDRESS=YOUR_ADDRESS \
+GENESIS_PATH=../genesis/smoke.json \
+CHAIN_ID=3 \
+AUTO_MINE=true \
+ADMIN_TOKEN=test \
+./neocoin server
+```
+
+---
+
 ## Community
 
 - **Discord**: [Join](#)

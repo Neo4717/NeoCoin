@@ -1,0 +1,39 @@
+# NeoCoin - Requirements
+# Install all dependencies: pip install -r requirements.txt
+
+# Core Python
+python>=3.10
+
+# NeoCoin Blockchain
+go>=1.24
+
+# AI Auditor (optional, for AI-powered transaction analysis)
+fastapi>=0.104.1
+uvicorn>=0.24.0
+pydantic>=2.5.2
+openai>=1.3.0
+google-generativeai>=0.2.0
+python-dotenv>=1.0.0
+
+# ML for AI Auditor (optional)
+numpy>=1.24.0
+scikit-learn>=1.3.0
+joblib>=1.3.0
+
+# Testing & Development
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+black>=23.0.0
+flake8>=6.0.0
+
+# Docker (for containerized deployment)
+docker>=6.0.0
+docker-compose>=2.20.0
+
+# Tor Support (for anonymous node operation)
+pysocks>=1.7.1
+stem>=1.8.0
+requests[socks]>=2.31.0
+
+# Monitoring (optional)
+prometheus-client>=0.18.0
