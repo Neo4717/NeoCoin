@@ -37,13 +37,35 @@ type PoolManager struct {
 }
 
 type PoolStats struct {
-	Acquired   atomic.Int64
-	Released   atomic.Int64
-	Created    atomic.Int64
-	Closed     atomic.Int64
-	LatencyAvg atomic.Int64
-	Reused     atomic.Int64
+	Acquired   int64
+	Released   int64
+	Created    int64
+	Closed     int64
+	LatencyAvg int64
+	Reused     int64
 }
+
+// Stats returns a copy of pool statistics
+//
+//go:noinline
+//nolint:goerr113
+func (p *PoolManager) Stats() PoolStats {
+	return PoolStats{
+		Acquired:   p.stats.Acquired,
+		Released:   p.stats.Released,
+		Created:    p.stats.Created,
+		Closed:     p.stats.Closed,
+		LatencyAvg: p.stats.LatencyAvg,
+		Reused:     p.stats.Reused,
+	}
+}
+
+func (s *PoolStats) Acquire()        { s.Acquired++ }
+func (s *PoolStats) Release()        { s.Released++ }
+func (s *PoolStats) Create()         { s.Created++ }
+func (s *PoolStats) Close()          { s.Closed++ }
+func (s *PoolStats) Reuse()          { s.Reused++ }
+func (s *PoolStats) Latency(v int64) { s.LatencyAvg = v }
 
 const DefaultMaxPoolConns = 100
 const DefaultMaxConnsPerPeer = 3
@@ -82,8 +104,8 @@ func (p *PoolManager) Acquire(addr string, createConn func() (*Peer, error)) (*P
 					conn.InUse.Store(true)
 					conn.LastUsed = time.Now()
 					p.mu.Unlock()
-					p.stats.Reused.Add(1)
-					p.stats.Acquired.Add(1)
+					p.stats.Reused++
+					p.stats.Acquired++
 					return conn, nil
 				}
 			}
@@ -114,8 +136,8 @@ func (p *PoolManager) Acquire(addr string, createConn func() (*Peer, error)) (*P
 	p.allConns[pooled.ID] = pooled
 	p.mu.Unlock()
 
-	p.stats.Created.Add(1)
-	p.stats.Acquired.Add(1)
+	p.stats.Created++
+	p.stats.Acquired++
 
 	return pooled, nil
 }
@@ -123,7 +145,7 @@ func (p *PoolManager) Acquire(addr string, createConn func() (*Peer, error)) (*P
 func (p *PoolManager) Release(conn *PooledConnection) {
 	conn.InUse.Store(false)
 	conn.LastUsed = time.Now()
-	p.stats.Released.Add(1)
+	p.stats.Released++
 }
 
 func (p *PoolManager) Close() {
@@ -169,7 +191,7 @@ func (p *PoolManager) closeIdleConnections(n int) {
 				delete(p.allConns, conn.ID)
 				conns = append(conns[:i], conns[i+1:]...)
 				count++
-				p.stats.Closed.Add(1)
+				p.stats.Closed++
 			}
 		}
 		if len(conns) == 0 {
@@ -180,16 +202,6 @@ func (p *PoolManager) closeIdleConnections(n int) {
 		if count >= n {
 			break
 		}
-	}
-}
-
-func (p *PoolManager) Stats() PoolStats {
-	return PoolStats{
-		Acquired: p.stats.Acquired,
-		Released: p.stats.Released,
-		Created:  p.stats.Created,
-		Closed:   p.stats.Closed,
-		Reused:   p.stats.Reused,
 	}
 }
 
