@@ -114,13 +114,15 @@ func (s *Server) routes() http.Handler {
 		http.StripPrefix("/wallet/", walletFS).ServeHTTP(w, r)
 	}))
 
+	// Serve main website from root
 	explorerFS := ExplorerFileServer()
 	mux.HandleFunc("/", mw.Wrap("root", false, 0, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
+			// Check for static files
 			http.NotFound(w, r)
 			return
 		}
-		http.Redirect(w, r, "/explorer/", http.StatusFound)
+		http.ServeFile(w, r, "../index.html")
 	}))
 	mux.HandleFunc("/explorer", mw.Wrap("explorer_redirect", false, 0, func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/explorer/", http.StatusMovedPermanently)
