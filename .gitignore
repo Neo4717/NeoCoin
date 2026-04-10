@@ -26,6 +26,7 @@ seed*
 ## Onion Service Keys
 /tmp/tor-onion-data/
 tor_keys/
+data/tor/
 
 ## Temp files
 *.tmp

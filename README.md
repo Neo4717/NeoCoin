@@ -3,7 +3,15 @@
 > **"Neo_HIT: Follow The White Rabbit"**
 > Genesis Block Message
 
-A community-driven Proof-of-Work blockchain. Fair launch, no premine.
+## ⚖️ License
+
+**This software is NOT standard open source. Commercial use requires a license.**
+
+- See [COMMERCIAL_LICENSE.md](./COMMERCIAL_LICENSE.md) for full terms
+- Non-commercial use is permitted for learning, research, and personal use
+- Commercial use is prohibited without written agreement from NeoCoin Protocol
+
+---
 
 ## Quick Join (3 Steps)
 

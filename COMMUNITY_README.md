@@ -53,4 +53,4 @@ Join the movement:
 
 ## License
 
-MIT
+Commercial - See COMMERCIAL_LICENSE.md
