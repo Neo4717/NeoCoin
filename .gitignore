@@ -32,6 +32,9 @@ data/tor/
 *.tmp
 *.log
 
+## Backup folders
+backups/
+
 ## Test credentials
 .env.example
 env.mainnet.example

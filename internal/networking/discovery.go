@@ -1,8 +1,11 @@
 package networking
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net"
@@ -158,11 +161,25 @@ func (k *Kademlia) FindNode(addr string, targetID []byte) ([]string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	conn, err := net.DialTimeout("tcp", addr, 3*time.Second)
-	if err != nil {
-		return nil, err
+	var conn net.Conn
+	var err error
+
+	ch := make(chan error, 1)
+	go func() {
+		conn, err = net.DialTimeout("tcp", addr, 3*time.Second)
+		ch <- err
+	}()
+
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case err := <-ch:
+		if err != nil {
+			return nil, err
+		}
 	}
-	defer conn.Close()
+
+	_ = ctx // ctx is used for timeout
 
 	conn.SetDeadline(time.Now().Add(5 * time.Second))
 
@@ -178,13 +195,38 @@ func (k *Kademlia) FindNode(addr string, targetID []byte) ([]string, error) {
 		return nil, err
 	}
 
+	var resp struct {
+		ID     int `json:"id"`
+		Result struct {
+			Nodes string `json:"nodes"`
+		} `json:"result"`
+	}
+
+	if err := json.Unmarshal(buf[:n], &resp); err != nil {
+		return nil, fmt.Errorf("failed to parse find_node response: %w", err)
+	}
+
+	if resp.Result.Nodes == "" {
+		return []string{}, nil
+	}
+
+	nodes, err := base64.StdEncoding.DecodeString(resp.Result.Nodes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode nodes: %w", err)
+	}
+
 	var peers []string
+	for i := 0; i < len(nodes); i += 26 {
+		if i+26 > len(nodes) {
+			break
+		}
+		peerAddr := string(nodes[i+18 : i+26])
+		if idx := bytes.IndexByte([]byte(peerAddr), ':'); idx > 0 {
+			peers = append(peers, peerAddr[:idx+1]+"9090")
+		}
+	}
 
-	_ = ctx
-	_ = n
-	_ = peers
-
-	return nil, fmt.Errorf("find_node response parsing not implemented")
+	return peers, nil
 }
 
 func (k *Kademlia) RefreshBuckets() {
