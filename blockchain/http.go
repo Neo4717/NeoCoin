@@ -21,19 +21,16 @@ type Server struct {
 	requireAI   bool
 	httpTimeout time.Duration
 
-	mp    *Mempool
-	miner *Miner
-
+	mp       *mempool.Mempool
+	miner    *Miner
 	peers    *PeerManager
 	txGossip bool
 
 	wsEnable bool
 	wsHub    *WSHub
 
-	adminToken string
-	trustProxy bool
-	limiter    *IPRateLimiter
-	metrics    *Metrics
+	limiter *IPRateLimiter
+	metrics *Metrics
 
 	peerManager interface {
 		Peers() []string
@@ -89,6 +86,7 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("/wallet/create", mw.Wrap("wallet_create", false, 0, s.handleWalletCreate))
 	mux.HandleFunc("/wallet/sign", mw.Wrap("wallet_sign", false, 0, s.handleWalletSign))
 	mux.HandleFunc("/mempool", mw.Wrap("mempool", false, 0, s.handleMempool))
+	mux.HandleFunc("/ai/spam", mw.Wrap("ai_spam", false, 0, s.handleAISpam))
 	mux.HandleFunc("/mine/once", mw.Wrap("mine_once", true, 1<<10, s.handleMineOnce))
 	mux.HandleFunc("/audit/chain", mw.Wrap("audit_chain", true, 1<<16, s.handleAuditChain))
 	mux.HandleFunc("/block", mw.Wrap("block_submit", true, 4<<20, s.handleAddBlock))
@@ -135,6 +133,32 @@ func (s *Server) routes() http.Handler {
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	_ = writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+}
+
+func (s *Server) handleAISpam(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if s.mp == nil {
+		_ = writeJSON(w, http.StatusOK, map[string]any{"status": "no_mempool"})
+		return
+	}
+	filter := s.mp.SpamFilter()
+	if filter == nil {
+		_ = writeJSON(w, http.StatusOK, map[string]any{"status": "spam_filter_disabled"})
+		return
+	}
+	globalStats := filter.GetGlobalStats()
+	_ = writeJSON(w, http.StatusOK, map[string]any{
+		"status":        "active",
+		"total_txs":     globalStats.TotalTxs,
+		"total_amount":  globalStats.TotalAmount,
+		"avg_fee_rate":  globalStats.AvgFeeRate,
+		"senders_count": globalStats.SendersCount,
+		"high_risk":     globalStats.HighRiskCount,
+		"last_update":   globalStats.LastUpdate.Unix(),
+	})
 }
 
 func (s *Server) handleChainInfo(w http.ResponseWriter, r *http.Request) {

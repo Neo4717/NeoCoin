@@ -10,6 +10,7 @@ import (
 
 	"github.com/Neo4717/NeoCoin/config"
 	"github.com/Neo4717/NeoCoin/internal/blockchain"
+	"github.com/Neo4717/NeoCoin/internal/mempool/ai"
 )
 
 const (
@@ -61,6 +62,8 @@ type Mempool struct {
 	pendingTxs      chan *blockchain.Transaction
 	validatedTxs    chan *MempoolEntry
 	stopCh          chan struct{}
+
+	spamFilter *ai.SpamFilter
 }
 
 type MempoolStats struct {
@@ -114,6 +117,7 @@ func NewMempool(cfg *config.Config) *Mempool {
 		pendingTxs:      make(chan *blockchain.Transaction, 1000),
 		validatedTxs:    make(chan *MempoolEntry, 1000),
 		stopCh:          make(chan struct{}),
+		spamFilter:      ai.NewSpamFilter(24 * time.Hour),
 	}
 
 	heap.Init(mp.feeHeap)
@@ -154,6 +158,20 @@ func (mp *Mempool) Add(tx *blockchain.Transaction) error {
 	fromAddr, err := tx.FromAddress()
 	if err != nil {
 		return fmt.Errorf("get sender address: %w", err)
+	}
+
+	if mp.spamFilter != nil {
+		spamResult := mp.spamFilter.AnalyzeTransaction(
+			fromAddr,
+			int64(tx.Amount),
+			int64(tx.Fee),
+			tx.Data,
+			tx.Nonce,
+		)
+		if spamResult.ShouldReject {
+			mp.stats.Rejected.Add(1)
+			return fmt.Errorf("spam detected: %s", spamResult.Reasons[0])
+		}
 	}
 
 	entry := &MempoolEntry{
@@ -585,4 +603,8 @@ func (mp *Mempool) getTxidBySenderNonce(sender string, nonce uint64) (string, bo
 		}
 	}
 	return "", false
+}
+
+func (mp *Mempool) SpamFilter() *ai.SpamFilter {
+	return mp.spamFilter
 }
