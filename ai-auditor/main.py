@@ -457,3 +457,61 @@ async def batch_audit(transactions: List[Transaction]):
         results.append({"valid": is_valid, "reason": reason, "risk_score": risk_score})
         reputation_tracker.update_reputation(tx.sender.lower(), is_valid, tx.amount)
     return {"results": results, "total": len(results)}
+
+
+# Simple spam filter endpoint for Go integration
+class SimpleTransaction(BaseModel):
+    fromAddress: Optional[str] = ""
+    toAddress: Optional[str] = ""
+    amount: int = 0
+    fee: int = 0
+    nonce: int = 0
+    chainId: int = 0
+    data: Optional[str] = ""
+
+
+@app.post("/analyze")
+async def analyze_spam(tx: SimpleTransaction):
+    """Simple spam analysis for Go blockchain integration"""
+    text = (tx.data or "").lower()
+    score = 0
+    factors = []
+
+    # Pattern matching
+    patterns = [
+        (r"airdrop|claim.*free|free.*token|get.*now", 30),
+        (r"100[xx]|1000[xx]|moon|lambo|pump|dump", 20),
+        (r"urgent|immediately|act.*now|limited.*time", 25),
+        (r"verify.*wallet|connect.*wallet|sign.*message", 35),
+        (r"gas.*free|no.*fee|zero.*fee", 20),
+        (r"double.*your|mul.*2x|guaranteed.*return", 40),
+        (r"discord.*admin|telegram.*admin|support.*chat", 30),
+        (r"private.*key|seed.*phrase|recovery.*phrase", 50),
+        (r"nft.*mint.*free|free.*nft|mint.*now", 25),
+        (r"update.*wallet|security.*alert|unlock.*account", 25),
+    ]
+
+    for pattern, points in patterns:
+        if re.search(pattern, text, re.IGNORECASE):
+            score += points
+            factors.append(pattern)
+
+    if tx.amount > 10000000000:
+        score += 15
+        factors.append("high_amount")
+
+    if tx.amount == 0:
+        score += 10
+        factors.append("zero_amount")
+
+    if tx.data and len(tx.data) < 3:
+        score += 10
+        factors.append("short_data")
+
+    score = min(score, 100)
+
+    return {
+        "spamScore": score,
+        "riskFactors": factors[:5],  # Limit to top 5
+        "recommendation": "reject" if score > 80 else "allow",
+    }
