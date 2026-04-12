@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -21,6 +22,28 @@ type Mempool struct {
 
 	entries       map[string]mempoolEntry      // txid -> entry
 	bySenderNonce map[string]map[uint64]string // fromAddr -> nonce -> txid
+
+	spamStats SpamStats
+}
+
+type SpamStats struct {
+	mu              sync.Mutex
+	TotalChecked    int64
+	SpamDetected    int64
+	HighRiskSenders int64
+}
+
+var spamPatterns = []*regexp.Regexp{
+	regexp.MustCompile(`(?i)airdrop|claim.*free|free.*token|get.*now`),
+	regexp.MustCompile(`(?i)100[xx]|1000[xx]|moon|lambo|pump|dump`),
+	regexp.MustCompile(`(?i)urgent|immediately|act.*now|limited.*time`),
+	regexp.MustCompile(`(?i)verify.*wallet|connect.*wallet|sign.*message`),
+	regexp.MustCompile(`(?i)gas.*free|no.*fee|zero.*fee`),
+	regexp.MustCompile(`(?i)double.*your|mul.*2x|guaranteed.*return`),
+	regexp.MustCompile(`(?i)discord.*admin|telegram.*admin|support.*chat`),
+	regexp.MustCompile(`(?i)private.*key|seed.*phrase|recovery.*phrase`),
+	regexp.MustCompile(`(?i)nft.*mint.*free|free.*nft|mint.*now`),
+	regexp.MustCompile(`(?i)update.*wallet|security.*alert|unlock.*account`),
 }
 
 func NewMempool(maxSize int) *Mempool {
@@ -31,7 +54,30 @@ func NewMempool(maxSize int) *Mempool {
 		maxSize:       maxSize,
 		entries:       map[string]mempoolEntry{},
 		bySenderNonce: map[string]map[uint64]string{},
+		spamStats:     SpamStats{},
 	}
+}
+
+func (m *Mempool) checkSpam(tx Transaction) error {
+	m.spamStats.mu.Lock()
+	defer m.spamStats.mu.Unlock()
+
+	m.spamStats.TotalChecked++
+
+	data := strings.ToLower(tx.Data)
+	for _, pattern := range spamPatterns {
+		if pattern.MatchString(data) {
+			m.spamStats.SpamDetected++
+			return errors.New("spam detected: suspicious pattern in transaction data")
+		}
+	}
+	return nil
+}
+
+func (m *Mempool) GetSpamStats() (int64, int64, int64) {
+	m.spamStats.mu.Lock()
+	defer m.spamStats.mu.Unlock()
+	return m.spamStats.TotalChecked, m.spamStats.SpamDetected, m.spamStats.HighRiskSenders
 }
 
 func txIDHex(tx Transaction) (string, error) {
@@ -64,6 +110,10 @@ func (m *Mempool) AddWithTxID(tx Transaction, txid string, p ConsensusParams, he
 	}
 	fromAddr, err := tx.FromAddress()
 	if err != nil {
+		return "", err
+	}
+
+	if err := m.checkSpam(tx); err != nil {
 		return "", err
 	}
 

@@ -21,7 +21,7 @@ type Server struct {
 	requireAI   bool
 	httpTimeout time.Duration
 
-	mp       *mempool.Mempool
+	mp       *Mempool
 	miner    *Miner
 	peers    *PeerManager
 	txGossip bool
@@ -29,8 +29,10 @@ type Server struct {
 	wsEnable bool
 	wsHub    *WSHub
 
-	limiter *IPRateLimiter
-	metrics *Metrics
+	limiter    *IPRateLimiter
+	metrics    *Metrics
+	adminToken string
+	trustProxy bool
 
 	peerManager interface {
 		Peers() []string
@@ -144,20 +146,12 @@ func (s *Server) handleAISpam(w http.ResponseWriter, r *http.Request) {
 		_ = writeJSON(w, http.StatusOK, map[string]any{"status": "no_mempool"})
 		return
 	}
-	filter := s.mp.SpamFilter()
-	if filter == nil {
-		_ = writeJSON(w, http.StatusOK, map[string]any{"status": "spam_filter_disabled"})
-		return
-	}
-	globalStats := filter.GetGlobalStats()
+	total, spam, highRisk := s.mp.GetSpamStats()
 	_ = writeJSON(w, http.StatusOK, map[string]any{
-		"status":        "active",
-		"total_txs":     globalStats.TotalTxs,
-		"total_amount":  globalStats.TotalAmount,
-		"avg_fee_rate":  globalStats.AvgFeeRate,
-		"senders_count": globalStats.SendersCount,
-		"high_risk":     globalStats.HighRiskCount,
-		"last_update":   globalStats.LastUpdate.Unix(),
+		"status":            "active",
+		"total_checked":     total,
+		"spam_detected":     spam,
+		"high_risk_senders": highRisk,
 	})
 }
 
