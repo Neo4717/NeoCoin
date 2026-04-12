@@ -58,9 +58,15 @@ func main() {
 		}
 
 		aiURL := os.Getenv("AI_AUDITOR_URL")
+		aiEnabled := aiURL != ""
+		aiFilter := NewAISpamFilter(aiURL, aiEnabled)
 
 		mpSize := envInt("MEMPOOL_MAX", 10_000)
-		mp := NewMempool(mpSize)
+		mp := NewMempoolWithAI(mpSize, aiFilter)
+
+		if aiEnabled {
+			log.Printf("AI Spam Filter enabled: %s", aiURL)
+		}
 
 		var minerLoop *Miner
 		if strings.TrimSpace(miner) != "" {

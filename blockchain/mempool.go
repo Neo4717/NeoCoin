@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"regexp"
 	"sort"
 	"strings"
@@ -24,6 +26,7 @@ type Mempool struct {
 	bySenderNonce map[string]map[uint64]string // fromAddr -> nonce -> txid
 
 	spamStats SpamStats
+	aiFilter  *AISpamFilter
 }
 
 type SpamStats struct {
@@ -31,6 +34,16 @@ type SpamStats struct {
 	TotalChecked    int64
 	SpamDetected    int64
 	HighRiskSenders int64
+}
+
+func NewMempoolWithAI(maxSize int, aiFilter *AISpamFilter) *Mempool {
+	m := &Mempool{
+		maxSize:       maxSize,
+		entries:       map[string]mempoolEntry{},
+		bySenderNonce: map[string]map[uint64]string{},
+		aiFilter:      aiFilter,
+	}
+	return m
 }
 
 var spamPatterns = []*regexp.Regexp{
@@ -71,6 +84,44 @@ func (m *Mempool) checkSpam(tx Transaction) error {
 			return errors.New("spam detected: suspicious pattern in transaction data")
 		}
 	}
+
+	// AI filter check
+	if m.aiFilter != nil && m.aiFilter.IsEnabled() {
+		fromAddr, err := tx.FromAddress()
+		if err != nil {
+			return err
+		}
+
+		// Call AI filter
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		score, factors, aiErr := m.aiFilter.AnalyzeTransaction(
+			ctx,
+			fromAddr,
+			tx.ToAddress,
+			tx.Amount,
+			tx.Fee,
+			tx.Nonce,
+			tx.ChainID,
+			tx.Data,
+		)
+
+		if aiErr != nil {
+			// Log error but don't block - AI is optional
+			m.spamStats.SpamDetected++
+			return fmt.Errorf("AI filter error: %v", aiErr)
+		}
+
+		if score > 80 {
+			m.spamStats.SpamDetected++
+			return fmt.Errorf("AI rejected: spam score %d, factors: %v", score, factors)
+		}
+
+		// Log accepted with AI score
+		fmt.Printf("AI: tx accepted score=%d factors=%v\n", score, factors)
+	}
+
 	return nil
 }
 
