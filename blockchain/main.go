@@ -179,8 +179,31 @@ func main() {
 			IdleTimeout:       60 * time.Second,
 			MaxHeaderBytes:    maxHeaderBytes,
 		}
-		if err := httpSrv.ListenAndServe(); err != nil {
-			log.Fatal(err)
+
+		secCfg := TLSConfigFromEnv()
+		tlsCfg, err := secCfg.MakeTLSConfig()
+		if err != nil {
+			log.Fatalf("TLS config error: %v", err)
+		}
+
+		if tlsCfg != nil {
+			httpSrv.TLSConfig = tlsCfg
+			httpSrv.Addr = strings.TrimSpace(os.Getenv("HTTPS_ADDR"))
+			if httpSrv.Addr == "" {
+				httpSrv.Addr = addr
+				if !strings.Contains(addr, ":") {
+					httpSrv.Addr = ":" + addr
+				}
+				httpSrv.Addr = strings.Replace(httpSrv.Addr, ":", ":443", 1)
+			}
+			log.Printf("HTTPS enabled on %s", httpSrv.Addr)
+			if err := httpSrv.ListenAndServeTLS("", ""); err != nil {
+				log.Fatal(err)
+			}
+		} else {
+			if err := httpSrv.ListenAndServe(); err != nil {
+				log.Fatal(err)
+			}
 		}
 
 	default:

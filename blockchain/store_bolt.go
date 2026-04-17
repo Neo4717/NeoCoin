@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/binary"
 	"encoding/gob"
 	"encoding/hex"
@@ -13,9 +14,53 @@ import (
 	bolt "go.etcd.io/bbolt"
 )
 
+const (
+	storeKeyEnv = "STORE_ENCRYPTION_KEY"
+)
+
 type BoltStore struct {
-	path string
-	db   *bolt.DB
+	path      string
+	db        *bolt.DB
+	encKey    [32]byte
+	encrypted bool
+}
+
+func (s *BoltStore) WithEncryption(password string) *BoltStore {
+	if password != "" {
+		sum := sha256.Sum256([]byte(password))
+		copy(s.encKey[:], sum[:])
+		s.encrypted = true
+	}
+	return s
+}
+
+const nonceSize = 12
+
+func (s *BoltStore) encrypt(data []byte) ([]byte, error) {
+	if !s.encrypted || len(data) == 0 {
+		return data, nil
+	}
+	key := s.encKey
+	out := make([]byte, nonceSize+len(data))
+	for i := 0; i < len(data); i++ {
+		out[nonceSize+i] = data[i] ^ key[i%len(key)]
+	}
+	return out, nil
+}
+
+func (s *BoltStore) decrypt(data []byte) ([]byte, error) {
+	if !s.encrypted || len(data) == 0 {
+		return data, nil
+	}
+	if len(data) < nonceSize {
+		return nil, errors.New("ciphertext too short")
+	}
+	key := s.encKey
+	dec := make([]byte, len(data)-nonceSize)
+	for i := 0; i < len(dec); i++ {
+		dec[i] = data[nonceSize+i] ^ key[i%len(key)]
+	}
+	return dec, nil
 }
 
 func OpenBoltStore(path string) (*BoltStore, error) {
